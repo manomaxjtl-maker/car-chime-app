@@ -336,6 +336,16 @@ function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onC
 function SelectSheet({
   destination, selected, onSelect, onConfirm,
 }: { destination: Suggestion; selected: Ride; onSelect: (r: Ride) => void; onConfirm: () => void }) {
+  const [type, setType] = useState<VehicleType>(selected.type);
+  const filtered = RIDES.filter((r) => r.type === type);
+  const activeRide = filtered.some((r) => r.id === selected.id) ? selected : filtered[0];
+
+  function switchType(t: VehicleType) {
+    setType(t);
+    const next = RIDES.find((r) => r.type === t);
+    if (next) onSelect(next);
+  }
+
   return (
     <div className="flex flex-col px-5 pb-7 pt-4">
       <div className="rounded-xl bg-secondary px-3 py-2.5">
@@ -343,9 +353,30 @@ function SelectSheet({
         <div className="truncate text-sm font-semibold">{destination.title}</div>
       </div>
 
-      <div className="mt-4 max-h-[42dvh] overflow-y-auto -mx-1 px-1">
-        {RIDES.map((r) => {
-          const active = r.id === selected.id;
+      <div className="mt-3 grid grid-cols-2 gap-1 rounded-2xl bg-secondary p-1">
+        {([
+          { id: "car" as const, label: "Carro", icon: <svg width="16" height="14" viewBox="0 0 48 28" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h40l-3-9a3 3 0 0 0-3-2H10a3 3 0 0 0-3 2L4 20Z"/><circle cx="13" cy="22" r="3"/><circle cx="35" cy="22" r="3"/></svg> },
+          { id: "moto" as const, label: "Moto", icon: <svg width="18" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="14" r="3"/><circle cx="19" cy="14" r="3"/><path d="M8 14h6l3-6h-3l-2-3h-3"/></svg> },
+        ]).map((opt) => {
+          const active = type === opt.id;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => switchType(opt.id)}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition ${
+                active ? "bg-background shadow-sm ring-1 ring-border" : "text-muted-foreground"
+              }`}
+            >
+              {opt.icon}
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 max-h-[36dvh] overflow-y-auto -mx-1 px-1">
+        {filtered.map((r) => {
+          const active = r.id === activeRide.id;
           return (
             <button
               key={r.id}
@@ -355,10 +386,16 @@ function SelectSheet({
               }`}
             >
               <div className="flex h-14 w-16 items-center justify-center rounded-xl bg-background ring-1 ring-border">
-                <svg width="34" height="20" viewBox="0 0 48 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 20h40l-3-9a3 3 0 0 0-3-2H10a3 3 0 0 0-3 2L4 20Z"/>
-                  <circle cx="13" cy="22" r="3"/><circle cx="35" cy="22" r="3"/>
-                </svg>
+                {r.type === "car" ? (
+                  <svg width="34" height="20" viewBox="0 0 48 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 20h40l-3-9a3 3 0 0 0-3-2H10a3 3 0 0 0-3 2L4 20Z"/>
+                    <circle cx="13" cy="22" r="3"/><circle cx="35" cy="22" r="3"/>
+                  </svg>
+                ) : (
+                  <svg width="32" height="22" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="5" cy="14" r="3"/><circle cx="19" cy="14" r="3"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
+                  </svg>
+                )}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -372,6 +409,7 @@ function SelectSheet({
               </div>
               <div className="text-right">
                 <div className="text-[15px] font-semibold tabular-nums">{r.price}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">estimado</div>
               </div>
             </button>
           );
@@ -390,7 +428,7 @@ function SelectSheet({
         onClick={onConfirm}
         className="mt-4 w-full rounded-2xl bg-foreground py-4 text-[15px] font-semibold text-background transition active:scale-[0.99]"
       >
-        Confirmar {selected.name}
+        Confirmar {activeRide.name} · {activeRide.price}
       </button>
     </div>
   );
