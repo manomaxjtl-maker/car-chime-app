@@ -18,7 +18,8 @@ export const Route = createFileRoute("/")({
 type Stage = "home" | "search" | "select" | "matching" | "trip";
 
 type Suggestion = { title: string; subtitle: string; eta: string };
-type Ride = { id: string; name: string; tag: string; eta: string; price: string; capacity: string };
+type VehicleType = "car" | "moto";
+type Ride = { id: string; name: string; tag: string; eta: string; price: string; capacity: string; type: VehicleType };
 
 const SUGGESTIONS: Suggestion[] = [
   { title: "Aeroporto de Congonhas", subtitle: "Av. Washington Luís — São Paulo", eta: "22 min" },
@@ -28,11 +29,18 @@ const SUGGESTIONS: Suggestion[] = [
 ];
 
 const RIDES: Ride[] = [
-  { id: "x", name: "RydeX", tag: "Econômico", eta: "3 min", price: "R$ 18,90", capacity: "4" },
-  { id: "comfort", name: "Comfort", tag: "Mais espaço", eta: "5 min", price: "R$ 26,40", capacity: "4" },
-  { id: "black", name: "Black", tag: "Premium", eta: "7 min", price: "R$ 42,10", capacity: "4" },
-  { id: "xl", name: "XL", tag: "Até 6 pessoas", eta: "9 min", price: "R$ 51,80", capacity: "6" },
+  { id: "x", name: "RydeX", tag: "Econômico", eta: "3 min", price: "R$ 18,90", capacity: "4", type: "car" },
+  { id: "comfort", name: "Comfort", tag: "Mais espaço", eta: "5 min", price: "R$ 26,40", capacity: "4", type: "car" },
+  { id: "black", name: "Black", tag: "Premium", eta: "7 min", price: "R$ 42,10", capacity: "4", type: "car" },
+  { id: "xl", name: "XL", tag: "Até 6 pessoas", eta: "9 min", price: "R$ 51,80", capacity: "6", type: "car" },
+  { id: "moto", name: "Moto", tag: "Mais rápido no trânsito", eta: "2 min", price: "R$ 9,90", capacity: "1", type: "moto" },
+  { id: "moto-pro", name: "Moto Pro", tag: "Motociclistas 4,9+", eta: "4 min", price: "R$ 13,50", capacity: "1", type: "moto" },
 ];
+
+const DRIVERS: Record<VehicleType, { name: string; initials: string; rating: string; vehicle: string; plate: string }> = {
+  car: { name: "Marco R.", initials: "MR", rating: "4,93", vehicle: "Honda Civic preto", plate: "ABC 1D23" },
+  moto: { name: "Diego S.", initials: "DS", rating: "4,97", vehicle: "Honda CG 160 vermelha", plate: "MOT 2K45" },
+};
 
 function RideApp() {
   const [stage, setStage] = useState<Stage>("home");
