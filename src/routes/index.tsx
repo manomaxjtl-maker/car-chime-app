@@ -465,13 +465,18 @@ function TripSheet({ ride, destination, onFinish }: { ride: Ride; destination: S
 
       <div className="mt-5 flex items-center gap-3 rounded-2xl bg-secondary p-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold">
-          MR
+          {DRIVERS[ride.type].initials}
         </div>
         <div className="flex-1">
-          <div className="text-sm font-semibold">Marco R.</div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            {DRIVERS[ride.type].name}
+            <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border">
+              {ride.type === "moto" ? "Moto" : "Carro"}
+            </span>
+          </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 7 7 .6-5.3 4.7L18 22l-6-3.6L6 22l1.3-7.7L2 9.6 9 9z"/></svg>
-            4,93 · Honda Civic preto · ABC 1D23
+            {DRIVERS[ride.type].rating} · {DRIVERS[ride.type].vehicle} · {DRIVERS[ride.type].plate}
           </div>
         </div>
         <button className="flex h-10 w-10 items-center justify-center rounded-full bg-background ring-1 ring-border" aria-label="Ligar">
