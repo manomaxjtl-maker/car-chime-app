@@ -437,6 +437,7 @@ function SelectSheet({
 /* -------------------- MATCHING -------------------- */
 
 function MatchingSheet({ ride }: { ride: Ride }) {
+  const label = ride.type === "moto" ? "motociclistas" : "motoristas de carro";
   return (
     <div className="px-5 pb-8 pt-6 text-center">
       <div className="mx-auto flex h-16 w-16 items-center justify-center">
@@ -446,7 +447,7 @@ function MatchingSheet({ ride }: { ride: Ride }) {
       <div className="mt-5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Procurando</div>
       <div className="mt-1 text-lg font-semibold">Encontrando um {ride.name} perto de você…</div>
       <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
-        Estamos avisando os motoristas mais próximos. Isso costuma levar poucos segundos.
+        Enviando a solicitação apenas para {label} disponíveis. Preço estimado {ride.price} · chega em {ride.eta}.
       </p>
     </div>
   );
