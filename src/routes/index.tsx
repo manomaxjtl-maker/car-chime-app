@@ -18,7 +18,8 @@ export const Route = createFileRoute("/")({
 type Stage = "home" | "search" | "select" | "matching" | "trip";
 
 type Suggestion = { title: string; subtitle: string; eta: string };
-type Ride = { id: string; name: string; tag: string; eta: string; price: string; capacity: string };
+type VehicleType = "car" | "moto";
+type Ride = { id: string; name: string; tag: string; eta: string; price: string; capacity: string; type: VehicleType };
 
 const SUGGESTIONS: Suggestion[] = [
   { title: "Aeroporto de Congonhas", subtitle: "Av. Washington Luís — São Paulo", eta: "22 min" },
@@ -28,11 +29,18 @@ const SUGGESTIONS: Suggestion[] = [
 ];
 
 const RIDES: Ride[] = [
-  { id: "x", name: "RydeX", tag: "Econômico", eta: "3 min", price: "R$ 18,90", capacity: "4" },
-  { id: "comfort", name: "Comfort", tag: "Mais espaço", eta: "5 min", price: "R$ 26,40", capacity: "4" },
-  { id: "black", name: "Black", tag: "Premium", eta: "7 min", price: "R$ 42,10", capacity: "4" },
-  { id: "xl", name: "XL", tag: "Até 6 pessoas", eta: "9 min", price: "R$ 51,80", capacity: "6" },
+  { id: "x", name: "RydeX", tag: "Econômico", eta: "3 min", price: "R$ 18,90", capacity: "4", type: "car" },
+  { id: "comfort", name: "Comfort", tag: "Mais espaço", eta: "5 min", price: "R$ 26,40", capacity: "4", type: "car" },
+  { id: "black", name: "Black", tag: "Premium", eta: "7 min", price: "R$ 42,10", capacity: "4", type: "car" },
+  { id: "xl", name: "XL", tag: "Até 6 pessoas", eta: "9 min", price: "R$ 51,80", capacity: "6", type: "car" },
+  { id: "moto", name: "Moto", tag: "Mais rápido no trânsito", eta: "2 min", price: "R$ 9,90", capacity: "1", type: "moto" },
+  { id: "moto-pro", name: "Moto Pro", tag: "Motociclistas 4,9+", eta: "4 min", price: "R$ 13,50", capacity: "1", type: "moto" },
 ];
+
+const DRIVERS: Record<VehicleType, { name: string; initials: string; rating: string; vehicle: string; plate: string }> = {
+  car: { name: "Marco R.", initials: "MR", rating: "4,93", vehicle: "Honda Civic preto", plate: "ABC 1D23" },
+  moto: { name: "Diego S.", initials: "DS", rating: "4,97", vehicle: "Honda CG 160 vermelha", plate: "MOT 2K45" },
+};
 
 function RideApp() {
   const [stage, setStage] = useState<Stage>("home");
@@ -328,6 +336,16 @@ function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onC
 function SelectSheet({
   destination, selected, onSelect, onConfirm,
 }: { destination: Suggestion; selected: Ride; onSelect: (r: Ride) => void; onConfirm: () => void }) {
+  const [type, setType] = useState<VehicleType>(selected.type);
+  const filtered = RIDES.filter((r) => r.type === type);
+  const activeRide = filtered.some((r) => r.id === selected.id) ? selected : filtered[0];
+
+  function switchType(t: VehicleType) {
+    setType(t);
+    const next = RIDES.find((r) => r.type === t);
+    if (next) onSelect(next);
+  }
+
   return (
     <div className="flex flex-col px-5 pb-7 pt-4">
       <div className="rounded-xl bg-secondary px-3 py-2.5">
@@ -335,9 +353,30 @@ function SelectSheet({
         <div className="truncate text-sm font-semibold">{destination.title}</div>
       </div>
 
-      <div className="mt-4 max-h-[42dvh] overflow-y-auto -mx-1 px-1">
-        {RIDES.map((r) => {
-          const active = r.id === selected.id;
+      <div className="mt-3 grid grid-cols-2 gap-1 rounded-2xl bg-secondary p-1">
+        {([
+          { id: "car" as const, label: "Carro", icon: <svg width="16" height="14" viewBox="0 0 48 28" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h40l-3-9a3 3 0 0 0-3-2H10a3 3 0 0 0-3 2L4 20Z"/><circle cx="13" cy="22" r="3"/><circle cx="35" cy="22" r="3"/></svg> },
+          { id: "moto" as const, label: "Moto", icon: <svg width="18" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="14" r="3"/><circle cx="19" cy="14" r="3"/><path d="M8 14h6l3-6h-3l-2-3h-3"/></svg> },
+        ]).map((opt) => {
+          const active = type === opt.id;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => switchType(opt.id)}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition ${
+                active ? "bg-background shadow-sm ring-1 ring-border" : "text-muted-foreground"
+              }`}
+            >
+              {opt.icon}
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 max-h-[36dvh] overflow-y-auto -mx-1 px-1">
+        {filtered.map((r) => {
+          const active = r.id === activeRide.id;
           return (
             <button
               key={r.id}
@@ -347,10 +386,16 @@ function SelectSheet({
               }`}
             >
               <div className="flex h-14 w-16 items-center justify-center rounded-xl bg-background ring-1 ring-border">
-                <svg width="34" height="20" viewBox="0 0 48 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 20h40l-3-9a3 3 0 0 0-3-2H10a3 3 0 0 0-3 2L4 20Z"/>
-                  <circle cx="13" cy="22" r="3"/><circle cx="35" cy="22" r="3"/>
-                </svg>
+                {r.type === "car" ? (
+                  <svg width="34" height="20" viewBox="0 0 48 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 20h40l-3-9a3 3 0 0 0-3-2H10a3 3 0 0 0-3 2L4 20Z"/>
+                    <circle cx="13" cy="22" r="3"/><circle cx="35" cy="22" r="3"/>
+                  </svg>
+                ) : (
+                  <svg width="32" height="22" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="5" cy="14" r="3"/><circle cx="19" cy="14" r="3"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
+                  </svg>
+                )}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -364,6 +409,7 @@ function SelectSheet({
               </div>
               <div className="text-right">
                 <div className="text-[15px] font-semibold tabular-nums">{r.price}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">estimado</div>
               </div>
             </button>
           );
@@ -382,7 +428,7 @@ function SelectSheet({
         onClick={onConfirm}
         className="mt-4 w-full rounded-2xl bg-foreground py-4 text-[15px] font-semibold text-background transition active:scale-[0.99]"
       >
-        Confirmar {selected.name}
+        Confirmar {activeRide.name} · {activeRide.price}
       </button>
     </div>
   );
@@ -391,6 +437,7 @@ function SelectSheet({
 /* -------------------- MATCHING -------------------- */
 
 function MatchingSheet({ ride }: { ride: Ride }) {
+  const label = ride.type === "moto" ? "motociclistas" : "motoristas de carro";
   return (
     <div className="px-5 pb-8 pt-6 text-center">
       <div className="mx-auto flex h-16 w-16 items-center justify-center">
@@ -400,7 +447,7 @@ function MatchingSheet({ ride }: { ride: Ride }) {
       <div className="mt-5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Procurando</div>
       <div className="mt-1 text-lg font-semibold">Encontrando um {ride.name} perto de você…</div>
       <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
-        Estamos avisando os motoristas mais próximos. Isso costuma levar poucos segundos.
+        Enviando a solicitação apenas para {label} disponíveis. Preço estimado {ride.price} · chega em {ride.eta}.
       </p>
     </div>
   );
@@ -418,13 +465,18 @@ function TripSheet({ ride, destination, onFinish }: { ride: Ride; destination: S
 
       <div className="mt-5 flex items-center gap-3 rounded-2xl bg-secondary p-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold">
-          MR
+          {DRIVERS[ride.type].initials}
         </div>
         <div className="flex-1">
-          <div className="text-sm font-semibold">Marco R.</div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            {DRIVERS[ride.type].name}
+            <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border">
+              {ride.type === "moto" ? "Moto" : "Carro"}
+            </span>
+          </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 7 7 .6-5.3 4.7L18 22l-6-3.6L6 22l1.3-7.7L2 9.6 9 9z"/></svg>
-            4,93 · Honda Civic preto · ABC 1D23
+            {DRIVERS[ride.type].rating} · {DRIVERS[ride.type].vehicle} · {DRIVERS[ride.type].plate}
           </div>
         </div>
         <button className="flex h-10 w-10 items-center justify-center rounded-full bg-background ring-1 ring-border" aria-label="Ligar">
