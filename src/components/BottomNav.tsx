@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 
-type Item = { to: "/" | "/historico" | "/motorista" | "/perfil"; label: string; icon: JSX.Element };
+type Item = { to: "/" | "/historico" | "/motorista" | "/perfil"; label: string; icon: ReactNode };
 
 const items: Item[] = [
   { to: "/",          label: "Viajar",    icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1Z"/></svg> },
