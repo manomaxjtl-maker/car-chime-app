@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BottomNav } from "@/components/BottomNav";
 import { fmtKz, TRIP_HISTORY } from "@/lib/ryde-data";
 
-export const Route = createFileRoute("/historico")({
+export const Route = createFileRoute("/passageiro/historico")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Histórico — Ryde" }] }),
   component: HistoricoPage,
 });
@@ -12,7 +13,7 @@ function HistoricoPage() {
   return (
     <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background pb-28">
       <header className="px-5 pt-8">
-        <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Histórico</div>
+        <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Passageiro</div>
         <h1 className="mt-1 text-2xl font-semibold">As suas viagens</h1>
       </header>
 
@@ -30,7 +31,7 @@ function HistoricoPage() {
             </div>
             <div className="mt-2 flex items-start gap-3">
               <div className="mt-1 flex flex-col items-center">
-                <div className="h-2 w-2 rounded-full bg-accent" />
+                <div className="h-2 w-2 rounded-full bg-foreground" />
                 <div className="my-1 h-5 w-px bg-border" />
                 <div className="h-2 w-2 rounded-sm bg-foreground" />
               </div>
@@ -47,7 +48,7 @@ function HistoricoPage() {
         ))}
       </ul>
 
-      <BottomNav />
+      <BottomNav variant="passageiro" />
     </main>
   );
 }

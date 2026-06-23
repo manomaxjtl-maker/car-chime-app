@@ -1,41 +1,54 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BottomNav } from "@/components/BottomNav";
 import { fmtKz, TRIP_HISTORY } from "@/lib/ryde-data";
+import { clearUser, getUser } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import type { SessionUser } from "@/lib/auth";
 
-export const Route = createFileRoute("/perfil")({
+export const Route = createFileRoute("/passageiro/perfil")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Perfil — Ryde" }] }),
   component: PerfilPage,
 });
 
 function PerfilPage() {
+  const navigate = useNavigate();
+  const [user, setU] = useState<SessionUser | null>(null);
+  useEffect(() => { setU(getUser()); }, []);
+
+  function logout() {
+    clearUser();
+    navigate({ to: "/auth" });
+  }
+
   return (
     <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background pb-28">
       <header className="px-5 pt-8">
-        <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-accent">Passageiro</div>
-        <h1 className="mt-1 text-2xl font-semibold">Olá, Helena</h1>
+        <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Passageiro</div>
+        <h1 className="mt-1 text-2xl font-semibold">Olá, {(user?.name ?? "").split(" ")[0] || "Helena"}</h1>
       </header>
 
       <section className="mx-5 mt-5 flex items-center gap-4 rounded-3xl bg-card p-4 ring-1 ring-border">
         <img src="https://i.pravatar.cc/120?img=47" alt="" className="h-14 w-14 rounded-full object-cover" />
         <div className="flex-1">
-          <div className="text-sm font-semibold">Helena Cabral</div>
-          <div className="text-xs text-muted-foreground">+244 923 401 882 · 4,98 ★</div>
+          <div className="text-sm font-semibold">{user?.name ?? "Helena Cabral"}</div>
+          <div className="text-xs text-muted-foreground">{user?.phone ?? "+244 923 401 882"} · 4,98 ★</div>
         </div>
-        <Link to="/auth" className="rounded-full bg-secondary px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider">
+        <button onClick={logout} className="rounded-full bg-secondary px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider">
           Sair
-        </Link>
+        </button>
       </section>
 
       <Section title="Conta">
-        <Row icon="user" label="Cadastro / Login" to="/auth" />
-        <Row icon="pin"  label="Endereços salvos" />
-        <Row icon="card" label="Métodos de pagamento" hint="Multicaixa Express" />
+        <Row icon="user"  label="Cadastro / Login" to="/auth" />
+        <Row icon="pin"   label="Endereços salvos" />
+        <Row icon="card"  label="Métodos de pagamento" to="/passageiro/pagamentos" />
       </Section>
 
       <Section title="Atividade">
-        <Row icon="route" label="Solicitar nova corrida" to="/" />
-        <Row icon="clock" label="Histórico de viagens"   to="/historico" />
-        <Row icon="map"   label="Acompanhar motorista"   to="/" />
+        <Row icon="route" label="Solicitar nova corrida" to="/passageiro/home" />
+        <Row icon="clock" label="Histórico de viagens"   to="/passageiro/historico" />
+        <Row icon="map"   label="Acompanhar motorista"   to="/passageiro/home" />
       </Section>
 
       <Section title="Últimas viagens">
@@ -53,7 +66,7 @@ function PerfilPage() {
         </div>
       </Section>
 
-      <BottomNav />
+      <BottomNav variant="passageiro" />
     </main>
   );
 }
@@ -67,10 +80,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Row({ icon, label, hint, to }: { icon: string; label: string; hint?: string; to?: string }) {
+function Row({ icon, label, hint, to }: { icon: string; label: string; hint?: string; to?: "/auth" | "/passageiro/home" | "/passageiro/historico" | "/passageiro/pagamentos" }) {
   const inner = (
     <div className="mx-5 flex items-center gap-3 rounded-2xl bg-card px-4 py-3.5 ring-1 ring-border transition active:scale-[0.99]">
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-accent">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-foreground">
         <Icon name={icon} />
       </span>
       <div className="flex-1 text-sm font-medium">{label}</div>

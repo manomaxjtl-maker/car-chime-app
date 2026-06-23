@@ -9,25 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as PassageiroRouteImport } from './routes/passageiro'
 import { Route as MotoristaRouteImport } from './routes/motorista'
-import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PassageiroPerfilRouteImport } from './routes/passageiro.perfil'
+import { Route as PassageiroPagamentosRouteImport } from './routes/passageiro.pagamentos'
+import { Route as PassageiroHomeRouteImport } from './routes/passageiro.home'
+import { Route as PassageiroHistoricoRouteImport } from './routes/passageiro.historico'
+import { Route as MotoristaPerfilRouteImport } from './routes/motorista.perfil'
+import { Route as MotoristaHistoricoRouteImport } from './routes/motorista.historico'
+import { Route as MotoristaGanhosRouteImport } from './routes/motorista.ganhos'
+import { Route as MotoristaDashboardRouteImport } from './routes/motorista.dashboard'
 
-const PerfilRoute = PerfilRouteImport.update({
-  id: '/perfil',
-  path: '/perfil',
+const PassageiroRoute = PassageiroRouteImport.update({
+  id: '/passageiro',
+  path: '/passageiro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MotoristaRoute = MotoristaRouteImport.update({
   id: '/motorista',
   path: '/motorista',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoricoRoute = HistoricoRouteImport.update({
-  id: '/historico',
-  path: '/historico',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -40,52 +42,149 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PassageiroPerfilRoute = PassageiroPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => PassageiroRoute,
+} as any)
+const PassageiroPagamentosRoute = PassageiroPagamentosRouteImport.update({
+  id: '/pagamentos',
+  path: '/pagamentos',
+  getParentRoute: () => PassageiroRoute,
+} as any)
+const PassageiroHomeRoute = PassageiroHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => PassageiroRoute,
+} as any)
+const PassageiroHistoricoRoute = PassageiroHistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => PassageiroRoute,
+} as any)
+const MotoristaPerfilRoute = MotoristaPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => MotoristaRoute,
+} as any)
+const MotoristaHistoricoRoute = MotoristaHistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => MotoristaRoute,
+} as any)
+const MotoristaGanhosRoute = MotoristaGanhosRouteImport.update({
+  id: '/ganhos',
+  path: '/ganhos',
+  getParentRoute: () => MotoristaRoute,
+} as any)
+const MotoristaDashboardRoute = MotoristaDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => MotoristaRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/historico': typeof HistoricoRoute
-  '/motorista': typeof MotoristaRoute
-  '/perfil': typeof PerfilRoute
+  '/motorista': typeof MotoristaRouteWithChildren
+  '/passageiro': typeof PassageiroRouteWithChildren
+  '/motorista/dashboard': typeof MotoristaDashboardRoute
+  '/motorista/ganhos': typeof MotoristaGanhosRoute
+  '/motorista/historico': typeof MotoristaHistoricoRoute
+  '/motorista/perfil': typeof MotoristaPerfilRoute
+  '/passageiro/historico': typeof PassageiroHistoricoRoute
+  '/passageiro/home': typeof PassageiroHomeRoute
+  '/passageiro/pagamentos': typeof PassageiroPagamentosRoute
+  '/passageiro/perfil': typeof PassageiroPerfilRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/historico': typeof HistoricoRoute
-  '/motorista': typeof MotoristaRoute
-  '/perfil': typeof PerfilRoute
+  '/motorista': typeof MotoristaRouteWithChildren
+  '/passageiro': typeof PassageiroRouteWithChildren
+  '/motorista/dashboard': typeof MotoristaDashboardRoute
+  '/motorista/ganhos': typeof MotoristaGanhosRoute
+  '/motorista/historico': typeof MotoristaHistoricoRoute
+  '/motorista/perfil': typeof MotoristaPerfilRoute
+  '/passageiro/historico': typeof PassageiroHistoricoRoute
+  '/passageiro/home': typeof PassageiroHomeRoute
+  '/passageiro/pagamentos': typeof PassageiroPagamentosRoute
+  '/passageiro/perfil': typeof PassageiroPerfilRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/historico': typeof HistoricoRoute
-  '/motorista': typeof MotoristaRoute
-  '/perfil': typeof PerfilRoute
+  '/motorista': typeof MotoristaRouteWithChildren
+  '/passageiro': typeof PassageiroRouteWithChildren
+  '/motorista/dashboard': typeof MotoristaDashboardRoute
+  '/motorista/ganhos': typeof MotoristaGanhosRoute
+  '/motorista/historico': typeof MotoristaHistoricoRoute
+  '/motorista/perfil': typeof MotoristaPerfilRoute
+  '/passageiro/historico': typeof PassageiroHistoricoRoute
+  '/passageiro/home': typeof PassageiroHomeRoute
+  '/passageiro/pagamentos': typeof PassageiroPagamentosRoute
+  '/passageiro/perfil': typeof PassageiroPerfilRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/historico' | '/motorista' | '/perfil'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/motorista'
+    | '/passageiro'
+    | '/motorista/dashboard'
+    | '/motorista/ganhos'
+    | '/motorista/historico'
+    | '/motorista/perfil'
+    | '/passageiro/historico'
+    | '/passageiro/home'
+    | '/passageiro/pagamentos'
+    | '/passageiro/perfil'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/historico' | '/motorista' | '/perfil'
-  id: '__root__' | '/' | '/auth' | '/historico' | '/motorista' | '/perfil'
+  to:
+    | '/'
+    | '/auth'
+    | '/motorista'
+    | '/passageiro'
+    | '/motorista/dashboard'
+    | '/motorista/ganhos'
+    | '/motorista/historico'
+    | '/motorista/perfil'
+    | '/passageiro/historico'
+    | '/passageiro/home'
+    | '/passageiro/pagamentos'
+    | '/passageiro/perfil'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/motorista'
+    | '/passageiro'
+    | '/motorista/dashboard'
+    | '/motorista/ganhos'
+    | '/motorista/historico'
+    | '/motorista/perfil'
+    | '/passageiro/historico'
+    | '/passageiro/home'
+    | '/passageiro/pagamentos'
+    | '/passageiro/perfil'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
-  HistoricoRoute: typeof HistoricoRoute
-  MotoristaRoute: typeof MotoristaRoute
-  PerfilRoute: typeof PerfilRoute
+  MotoristaRoute: typeof MotoristaRouteWithChildren
+  PassageiroRoute: typeof PassageiroRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/perfil': {
-      id: '/perfil'
-      path: '/perfil'
-      fullPath: '/perfil'
-      preLoaderRoute: typeof PerfilRouteImport
+    '/passageiro': {
+      id: '/passageiro'
+      path: '/passageiro'
+      fullPath: '/passageiro'
+      preLoaderRoute: typeof PassageiroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/motorista': {
@@ -93,13 +192,6 @@ declare module '@tanstack/react-router' {
       path: '/motorista'
       fullPath: '/motorista'
       preLoaderRoute: typeof MotoristaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/historico': {
-      id: '/historico'
-      path: '/historico'
-      fullPath: '/historico'
-      preLoaderRoute: typeof HistoricoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -116,15 +208,106 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/passageiro/perfil': {
+      id: '/passageiro/perfil'
+      path: '/perfil'
+      fullPath: '/passageiro/perfil'
+      preLoaderRoute: typeof PassageiroPerfilRouteImport
+      parentRoute: typeof PassageiroRoute
+    }
+    '/passageiro/pagamentos': {
+      id: '/passageiro/pagamentos'
+      path: '/pagamentos'
+      fullPath: '/passageiro/pagamentos'
+      preLoaderRoute: typeof PassageiroPagamentosRouteImport
+      parentRoute: typeof PassageiroRoute
+    }
+    '/passageiro/home': {
+      id: '/passageiro/home'
+      path: '/home'
+      fullPath: '/passageiro/home'
+      preLoaderRoute: typeof PassageiroHomeRouteImport
+      parentRoute: typeof PassageiroRoute
+    }
+    '/passageiro/historico': {
+      id: '/passageiro/historico'
+      path: '/historico'
+      fullPath: '/passageiro/historico'
+      preLoaderRoute: typeof PassageiroHistoricoRouteImport
+      parentRoute: typeof PassageiroRoute
+    }
+    '/motorista/perfil': {
+      id: '/motorista/perfil'
+      path: '/perfil'
+      fullPath: '/motorista/perfil'
+      preLoaderRoute: typeof MotoristaPerfilRouteImport
+      parentRoute: typeof MotoristaRoute
+    }
+    '/motorista/historico': {
+      id: '/motorista/historico'
+      path: '/historico'
+      fullPath: '/motorista/historico'
+      preLoaderRoute: typeof MotoristaHistoricoRouteImport
+      parentRoute: typeof MotoristaRoute
+    }
+    '/motorista/ganhos': {
+      id: '/motorista/ganhos'
+      path: '/ganhos'
+      fullPath: '/motorista/ganhos'
+      preLoaderRoute: typeof MotoristaGanhosRouteImport
+      parentRoute: typeof MotoristaRoute
+    }
+    '/motorista/dashboard': {
+      id: '/motorista/dashboard'
+      path: '/dashboard'
+      fullPath: '/motorista/dashboard'
+      preLoaderRoute: typeof MotoristaDashboardRouteImport
+      parentRoute: typeof MotoristaRoute
+    }
   }
 }
+
+interface MotoristaRouteChildren {
+  MotoristaDashboardRoute: typeof MotoristaDashboardRoute
+  MotoristaGanhosRoute: typeof MotoristaGanhosRoute
+  MotoristaHistoricoRoute: typeof MotoristaHistoricoRoute
+  MotoristaPerfilRoute: typeof MotoristaPerfilRoute
+}
+
+const MotoristaRouteChildren: MotoristaRouteChildren = {
+  MotoristaDashboardRoute: MotoristaDashboardRoute,
+  MotoristaGanhosRoute: MotoristaGanhosRoute,
+  MotoristaHistoricoRoute: MotoristaHistoricoRoute,
+  MotoristaPerfilRoute: MotoristaPerfilRoute,
+}
+
+const MotoristaRouteWithChildren = MotoristaRoute._addFileChildren(
+  MotoristaRouteChildren,
+)
+
+interface PassageiroRouteChildren {
+  PassageiroHistoricoRoute: typeof PassageiroHistoricoRoute
+  PassageiroHomeRoute: typeof PassageiroHomeRoute
+  PassageiroPagamentosRoute: typeof PassageiroPagamentosRoute
+  PassageiroPerfilRoute: typeof PassageiroPerfilRoute
+}
+
+const PassageiroRouteChildren: PassageiroRouteChildren = {
+  PassageiroHistoricoRoute: PassageiroHistoricoRoute,
+  PassageiroHomeRoute: PassageiroHomeRoute,
+  PassageiroPagamentosRoute: PassageiroPagamentosRoute,
+  PassageiroPerfilRoute: PassageiroPerfilRoute,
+}
+
+const PassageiroRouteWithChildren = PassageiroRoute._addFileChildren(
+  PassageiroRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
-  HistoricoRoute: HistoricoRoute,
-  MotoristaRoute: MotoristaRoute,
-  PerfilRoute: PerfilRoute,
+  MotoristaRoute: MotoristaRouteWithChildren,
+  PassageiroRoute: PassageiroRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
