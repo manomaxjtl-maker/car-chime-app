@@ -13,6 +13,10 @@ import { Route as PassageiroRouteImport } from './routes/passageiro'
 import { Route as MotoristaRouteImport } from './routes/motorista'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PassageiroPerfilRouteImport } from './routes/passageiro.perfil'
+import { Route as PassageiroPagamentosRouteImport } from './routes/passageiro.pagamentos'
+import { Route as PassageiroHomeRouteImport } from './routes/passageiro.home'
+import { Route as PassageiroHistoricoRouteImport } from './routes/passageiro.historico'
 
 const PassageiroRoute = PassageiroRouteImport.update({
   id: '/passageiro',
@@ -34,39 +38,96 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PassageiroPerfilRoute = PassageiroPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => PassageiroRoute,
+} as any)
+const PassageiroPagamentosRoute = PassageiroPagamentosRouteImport.update({
+  id: '/pagamentos',
+  path: '/pagamentos',
+  getParentRoute: () => PassageiroRoute,
+} as any)
+const PassageiroHomeRoute = PassageiroHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => PassageiroRoute,
+} as any)
+const PassageiroHistoricoRoute = PassageiroHistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => PassageiroRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/motorista': typeof MotoristaRoute
-  '/passageiro': typeof PassageiroRoute
+  '/passageiro': typeof PassageiroRouteWithChildren
+  '/passageiro/historico': typeof PassageiroHistoricoRoute
+  '/passageiro/home': typeof PassageiroHomeRoute
+  '/passageiro/pagamentos': typeof PassageiroPagamentosRoute
+  '/passageiro/perfil': typeof PassageiroPerfilRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/motorista': typeof MotoristaRoute
-  '/passageiro': typeof PassageiroRoute
+  '/passageiro': typeof PassageiroRouteWithChildren
+  '/passageiro/historico': typeof PassageiroHistoricoRoute
+  '/passageiro/home': typeof PassageiroHomeRoute
+  '/passageiro/pagamentos': typeof PassageiroPagamentosRoute
+  '/passageiro/perfil': typeof PassageiroPerfilRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/motorista': typeof MotoristaRoute
-  '/passageiro': typeof PassageiroRoute
+  '/passageiro': typeof PassageiroRouteWithChildren
+  '/passageiro/historico': typeof PassageiroHistoricoRoute
+  '/passageiro/home': typeof PassageiroHomeRoute
+  '/passageiro/pagamentos': typeof PassageiroPagamentosRoute
+  '/passageiro/perfil': typeof PassageiroPerfilRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/motorista' | '/passageiro'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/motorista'
+    | '/passageiro'
+    | '/passageiro/historico'
+    | '/passageiro/home'
+    | '/passageiro/pagamentos'
+    | '/passageiro/perfil'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/motorista' | '/passageiro'
-  id: '__root__' | '/' | '/auth' | '/motorista' | '/passageiro'
+  to:
+    | '/'
+    | '/auth'
+    | '/motorista'
+    | '/passageiro'
+    | '/passageiro/historico'
+    | '/passageiro/home'
+    | '/passageiro/pagamentos'
+    | '/passageiro/perfil'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/motorista'
+    | '/passageiro'
+    | '/passageiro/historico'
+    | '/passageiro/home'
+    | '/passageiro/pagamentos'
+    | '/passageiro/perfil'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   MotoristaRoute: typeof MotoristaRoute
-  PassageiroRoute: typeof PassageiroRoute
+  PassageiroRoute: typeof PassageiroRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -99,14 +160,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/passageiro/perfil': {
+      id: '/passageiro/perfil'
+      path: '/perfil'
+      fullPath: '/passageiro/perfil'
+      preLoaderRoute: typeof PassageiroPerfilRouteImport
+      parentRoute: typeof PassageiroRoute
+    }
+    '/passageiro/pagamentos': {
+      id: '/passageiro/pagamentos'
+      path: '/pagamentos'
+      fullPath: '/passageiro/pagamentos'
+      preLoaderRoute: typeof PassageiroPagamentosRouteImport
+      parentRoute: typeof PassageiroRoute
+    }
+    '/passageiro/home': {
+      id: '/passageiro/home'
+      path: '/home'
+      fullPath: '/passageiro/home'
+      preLoaderRoute: typeof PassageiroHomeRouteImport
+      parentRoute: typeof PassageiroRoute
+    }
+    '/passageiro/historico': {
+      id: '/passageiro/historico'
+      path: '/historico'
+      fullPath: '/passageiro/historico'
+      preLoaderRoute: typeof PassageiroHistoricoRouteImport
+      parentRoute: typeof PassageiroRoute
+    }
   }
 }
+
+interface PassageiroRouteChildren {
+  PassageiroHistoricoRoute: typeof PassageiroHistoricoRoute
+  PassageiroHomeRoute: typeof PassageiroHomeRoute
+  PassageiroPagamentosRoute: typeof PassageiroPagamentosRoute
+  PassageiroPerfilRoute: typeof PassageiroPerfilRoute
+}
+
+const PassageiroRouteChildren: PassageiroRouteChildren = {
+  PassageiroHistoricoRoute: PassageiroHistoricoRoute,
+  PassageiroHomeRoute: PassageiroHomeRoute,
+  PassageiroPagamentosRoute: PassageiroPagamentosRoute,
+  PassageiroPerfilRoute: PassageiroPerfilRoute,
+}
+
+const PassageiroRouteWithChildren = PassageiroRoute._addFileChildren(
+  PassageiroRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   MotoristaRoute: MotoristaRoute,
-  PassageiroRoute: PassageiroRoute,
+  PassageiroRoute: PassageiroRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
