@@ -266,6 +266,48 @@ function HomeSheet({ onSearch, drivers }: { onSearch: () => void; drivers: Nearb
           ))}
         </div>
       </div>
+
+      <div className="mt-5">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Motoristas perto de si</div>
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
+            {onlineCount} online
+          </div>
+        </div>
+        <ul className="space-y-1.5">
+          {top.map((d) => (
+            <li key={d.id} className="flex items-center gap-3 rounded-2xl bg-secondary px-3 py-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-[11px] font-semibold ring-1 ring-border">
+                {d.initials}
+              </span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  {d.name}
+                  <span className="rounded-md bg-background px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground ring-1 ring-border">
+                    {d.type === "moto" ? "Moto" : "Carro"}
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {d.rating.toFixed(2)} ★ · {d.distanceKm.toFixed(1)} km
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-semibold tabular-nums">{d.etaMin} min</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">a chegar</div>
+              </div>
+            </li>
+          ))}
+          {top.length === 0 && (
+            <li className="rounded-2xl bg-secondary px-3 py-4 text-center text-xs text-muted-foreground">
+              Nenhum motorista online por perto.
+            </li>
+          )}
+        </ul>
+      </div>
     </div>
   );
 }
