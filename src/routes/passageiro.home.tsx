@@ -27,6 +27,12 @@ function RideApp() {
   const [destination, setDestination] = useState<Suggestion | null>(null);
   const [selected, setSelected] = useState<Ride>(RIDES[0]);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const nearby = useNearbyDrivers(2200);
+  const typeFilter: VehicleType | null =
+    stage === "select" || stage === "matching" || stage === "trip" ? selected.type : null;
+  const visibleDrivers = nearby.filter(
+    (d) => d.online && (typeFilter ? d.type === typeFilter : true),
+  );
 
   useEffect(() => {
     if (stage !== "matching") return;
