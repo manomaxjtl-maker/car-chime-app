@@ -389,29 +389,6 @@ function HomeSheet({
             </motion.li>
           ))}
           </AnimatePresence>
-
-          {top.map((d) => (
-            <li key={d.id} className="flex items-center gap-3 rounded-2xl bg-secondary px-3 py-2.5">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-[11px] font-semibold ring-1 ring-border">
-                {d.initials}
-              </span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  {d.name}
-                  <span className="rounded-md bg-background px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground ring-1 ring-border">
-                    {d.type === "moto" ? "Moto" : "Carro"}
-                  </span>
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {d.rating.toFixed(2)} ★ · {d.distanceKm.toFixed(1)} km
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-semibold tabular-nums">{d.etaMin} min</div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">a chegar</div>
-              </div>
-            </li>
-          ))}
           {top.length === 0 && (
             <li className="rounded-2xl bg-secondary px-3 py-4 text-center text-xs text-muted-foreground">
               Nenhum motorista online por perto.
@@ -422,6 +399,7 @@ function HomeSheet({
     </div>
   );
 }
+
 
 function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onClose: () => void }) {
   const [q, setQ] = useState("");
