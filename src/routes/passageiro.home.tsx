@@ -93,7 +93,7 @@ function RideApp() {
   );
 }
 
-function MapCanvas({ stage }: { stage: Stage }) {
+function MapCanvas({ stage, drivers }: { stage: Stage; drivers: NearbyDriver[] }) {
   return (
     <div className="absolute inset-0">
       <motion.img
