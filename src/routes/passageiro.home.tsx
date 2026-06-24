@@ -22,12 +22,20 @@ export const Route = createFileRoute("/passageiro/home")({
 
 type Stage = "home" | "search" | "select" | "matching" | "trip";
 
+const REFRESH_OPTIONS: { id: "slow" | "normal" | "fast"; label: string; ms: number }[] = [
+  { id: "slow",   label: "Lento",  ms: 4000 },
+  { id: "normal", label: "Normal", ms: 2200 },
+  { id: "fast",   label: "Rápido", ms: 1100 },
+];
+
 function RideApp() {
   const [stage, setStage] = useState<Stage>("home");
   const [destination, setDestination] = useState<Suggestion | null>(null);
   const [selected, setSelected] = useState<Ride>(RIDES[0]);
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const nearby = useNearbyDrivers(2200);
+  const [refreshId, setRefreshId] = useState<"slow" | "normal" | "fast">("normal");
+  const refreshMs = REFRESH_OPTIONS.find((o) => o.id === refreshId)!.ms;
+  const nearby = useNearbyDrivers(refreshMs);
   const typeFilter: VehicleType | null =
     stage === "select" || stage === "matching" || stage === "trip" ? selected.type : null;
   const visibleDrivers = nearby.filter(
@@ -49,15 +57,22 @@ function RideApp() {
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
-      <MapCanvas stage={stage} drivers={visibleDrivers} />
+      <MapCanvas stage={stage} drivers={visibleDrivers} refreshMs={refreshMs} />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 
       <AnimatePresence mode="wait">
         {stage === "home" && (
-          <Sheet key="home"><HomeSheet onSearch={() => setStage("search")} drivers={visibleDrivers} /></Sheet>
+          <Sheet key="home">
+            <HomeSheet
+              onSearch={() => setStage("search")}
+              drivers={visibleDrivers}
+              refreshId={refreshId}
+              onRefreshChange={setRefreshId}
+            />
+          </Sheet>
         )}
         {stage === "search" && (
-          <Sheet key="search" full>
+          <Sheet key="search" peek onDismiss={() => setStage("home")}>
             <SearchSheet
               onPick={(s) => { setDestination(s); setStage("select"); }}
               onClose={() => setStage("home")}
@@ -93,7 +108,7 @@ function RideApp() {
   );
 }
 
-function MapCanvas({ stage, drivers }: { stage: Stage; drivers: NearbyDriver[] }) {
+function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: NearbyDriver[]; refreshMs: number }) {
   return (
     <div className="absolute inset-0">
       <motion.img
@@ -112,7 +127,7 @@ function MapCanvas({ stage, drivers }: { stage: Stage; drivers: NearbyDriver[] }
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
         </span>
-        Mapa ao vivo
+        Mapa ao vivo · {Math.round(refreshMs / 100) / 10}s
       </div>
 
       <motion.div className="absolute left-1/2 top-[38%] -translate-x-1/2" initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
@@ -122,27 +137,38 @@ function MapCanvas({ stage, drivers }: { stage: Stage; drivers: NearbyDriver[] }
         </div>
       </motion.div>
 
-      {stage !== "trip" && drivers.map((d) => (
-        <motion.div
-          key={d.id}
-          className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
-          animate={{ left: `${d.x}%`, top: `${d.y}%` }}
-          transition={{ duration: 1.8, ease: "easeInOut" }}
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
-            {d.type === "car" ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
-                <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
-              </svg>
-            )}
-          </div>
-        </motion.div>
-      ))}
+      <AnimatePresence>
+        {stage !== "trip" && drivers.map((d) => (
+          <motion.div
+            key={d.id}
+            className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ left: `${d.x}%`, top: `${d.y}%`, scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{
+              left:  { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
+              top:   { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
+              scale: { type: "spring", stiffness: 320, damping: 22 },
+              opacity: { duration: 0.28 },
+            }}
+          >
+            <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
+              <span className="absolute -inset-1 rounded-full bg-foreground/10 animate-ping" />
+              {d.type === "car" ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
+                  <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
+                </svg>
+              )}
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
 
       {(stage === "select" || stage === "matching" || stage === "trip") && (
         <>
@@ -220,23 +246,45 @@ function TopBar({ stage, onBack }: { stage: Stage; onBack: () => void }) {
   );
 }
 
-function Sheet({ children, full = false }: { children: React.ReactNode; full?: boolean }) {
+function Sheet({
+  children, full = false, peek = false, onDismiss,
+}: { children: React.ReactNode; full?: boolean; peek?: boolean; onDismiss?: () => void }) {
+  const dismissible = Boolean(onDismiss);
   return (
     <motion.section
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", stiffness: 320, damping: 34 }}
-      className={`absolute inset-x-0 bottom-16 z-30 rounded-t-3xl bg-card ring-1 ring-border ${full ? "top-0 bottom-0 rounded-none" : ""}`}
+      drag={dismissible ? "y" : false}
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0, bottom: 0.5 }}
+      onDragEnd={(_, info) => {
+        if (onDismiss && (info.offset.y > 110 || info.velocity.y > 600)) onDismiss();
+      }}
+      className={[
+        "absolute inset-x-0 bottom-16 z-30 rounded-t-3xl bg-card ring-1 ring-border",
+        full ? "top-0 bottom-0 rounded-none" : "",
+        peek ? "top-[40%]" : "",
+        dismissible ? "touch-none" : "",
+      ].join(" ")}
       style={{ boxShadow: "var(--shadow-sheet)" }}
     >
-      {!full && <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border" />}
+      {!full && <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border" />}
       {children}
     </motion.section>
   );
 }
 
-function HomeSheet({ onSearch, drivers }: { onSearch: () => void; drivers: NearbyDriver[] }) {
+
+function HomeSheet({
+  onSearch, drivers, refreshId, onRefreshChange,
+}: {
+  onSearch: () => void;
+  drivers: NearbyDriver[];
+  refreshId: "slow" | "normal" | "fast";
+  onRefreshChange: (id: "slow" | "normal" | "fast") => void;
+}) {
   const onlineCount = drivers.length;
   const top = drivers.slice(0, 4);
   return (
@@ -270,17 +318,48 @@ function HomeSheet({ onSearch, drivers }: { onSearch: () => void; drivers: Nearb
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between">
           <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Motoristas perto de si</div>
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground">
+          <motion.div
+            key={onlineCount}
+            initial={{ scale: 0.85, opacity: 0.4 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 360, damping: 22 }}
+            className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground"
+          >
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
             </span>
             {onlineCount} online
-          </div>
+          </motion.div>
         </div>
+
+        <div className="mb-2 flex items-center gap-1 rounded-2xl bg-secondary p-1">
+          {REFRESH_OPTIONS.map((opt) => {
+            const active = opt.id === refreshId;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => onRefreshChange(opt.id)}
+                className={`flex-1 rounded-xl py-1.5 text-[11px] font-medium transition ${active ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground"}`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+
         <ul className="space-y-1.5">
+          <AnimatePresence initial={false}>
           {top.map((d) => (
-            <li key={d.id} className="flex items-center gap-3 rounded-2xl bg-secondary px-3 py-2.5">
+            <motion.li
+              key={d.id}
+              layout
+              initial={{ opacity: 0, y: 6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 300, damping: 26 }}
+              className="flex items-center gap-3 rounded-2xl bg-secondary px-3 py-2.5"
+            >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-[11px] font-semibold ring-1 ring-border">
                 {d.initials}
               </span>
@@ -296,11 +375,20 @@ function HomeSheet({ onSearch, drivers }: { onSearch: () => void; drivers: Nearb
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold tabular-nums">{d.etaMin} min</div>
+                <motion.div
+                  key={d.etaMin}
+                  initial={{ y: -4, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.25 }}
+                  className="text-sm font-semibold tabular-nums"
+                >
+                  {d.etaMin} min
+                </motion.div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">a chegar</div>
               </div>
-            </li>
+            </motion.li>
           ))}
+          </AnimatePresence>
           {top.length === 0 && (
             <li className="rounded-2xl bg-secondary px-3 py-4 text-center text-xs text-muted-foreground">
               Nenhum motorista online por perto.
@@ -311,6 +399,7 @@ function HomeSheet({ onSearch, drivers }: { onSearch: () => void; drivers: Nearb
     </div>
   );
 }
+
 
 function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onClose: () => void }) {
   const [q, setQ] = useState("");
