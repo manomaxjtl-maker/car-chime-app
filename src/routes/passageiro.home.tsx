@@ -236,7 +236,9 @@ function Sheet({ children, full = false }: { children: React.ReactNode; full?: b
   );
 }
 
-function HomeSheet({ onSearch }: { onSearch: () => void }) {
+function HomeSheet({ onSearch, drivers }: { onSearch: () => void; drivers: NearbyDriver[] }) {
+  const onlineCount = drivers.length;
+  const top = drivers.slice(0, 4);
   return (
     <div className="px-5 pb-7 pt-5">
       <h1 className="text-[26px] font-semibold leading-tight tracking-tight">Para onde, hoje?</h1>
