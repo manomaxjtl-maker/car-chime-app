@@ -22,12 +22,20 @@ export const Route = createFileRoute("/passageiro/home")({
 
 type Stage = "home" | "search" | "select" | "matching" | "trip";
 
+const REFRESH_OPTIONS: { id: "slow" | "normal" | "fast"; label: string; ms: number }[] = [
+  { id: "slow",   label: "Lento",  ms: 4000 },
+  { id: "normal", label: "Normal", ms: 2200 },
+  { id: "fast",   label: "Rápido", ms: 1100 },
+];
+
 function RideApp() {
   const [stage, setStage] = useState<Stage>("home");
   const [destination, setDestination] = useState<Suggestion | null>(null);
   const [selected, setSelected] = useState<Ride>(RIDES[0]);
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const nearby = useNearbyDrivers(2200);
+  const [refreshId, setRefreshId] = useState<"slow" | "normal" | "fast">("normal");
+  const refreshMs = REFRESH_OPTIONS.find((o) => o.id === refreshId)!.ms;
+  const nearby = useNearbyDrivers(refreshMs);
   const typeFilter: VehicleType | null =
     stage === "select" || stage === "matching" || stage === "trip" ? selected.type : null;
   const visibleDrivers = nearby.filter(
@@ -49,15 +57,22 @@ function RideApp() {
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
-      <MapCanvas stage={stage} drivers={visibleDrivers} />
+      <MapCanvas stage={stage} drivers={visibleDrivers} refreshMs={refreshMs} />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 
       <AnimatePresence mode="wait">
         {stage === "home" && (
-          <Sheet key="home"><HomeSheet onSearch={() => setStage("search")} drivers={visibleDrivers} /></Sheet>
+          <Sheet key="home">
+            <HomeSheet
+              onSearch={() => setStage("search")}
+              drivers={visibleDrivers}
+              refreshId={refreshId}
+              onRefreshChange={setRefreshId}
+            />
+          </Sheet>
         )}
         {stage === "search" && (
-          <Sheet key="search" full>
+          <Sheet key="search" peek onDismiss={() => setStage("home")}>
             <SearchSheet
               onPick={(s) => { setDestination(s); setStage("select"); }}
               onClose={() => setStage("home")}
