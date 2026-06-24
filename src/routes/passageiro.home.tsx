@@ -246,21 +246,36 @@ function TopBar({ stage, onBack }: { stage: Stage; onBack: () => void }) {
   );
 }
 
-function Sheet({ children, full = false }: { children: React.ReactNode; full?: boolean }) {
+function Sheet({
+  children, full = false, peek = false, onDismiss,
+}: { children: React.ReactNode; full?: boolean; peek?: boolean; onDismiss?: () => void }) {
+  const dismissible = Boolean(onDismiss);
   return (
     <motion.section
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", stiffness: 320, damping: 34 }}
-      className={`absolute inset-x-0 bottom-16 z-30 rounded-t-3xl bg-card ring-1 ring-border ${full ? "top-0 bottom-0 rounded-none" : ""}`}
+      drag={dismissible ? "y" : false}
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0, bottom: 0.5 }}
+      onDragEnd={(_, info) => {
+        if (onDismiss && (info.offset.y > 110 || info.velocity.y > 600)) onDismiss();
+      }}
+      className={[
+        "absolute inset-x-0 bottom-16 z-30 rounded-t-3xl bg-card ring-1 ring-border",
+        full ? "top-0 bottom-0 rounded-none" : "",
+        peek ? "top-[40%]" : "",
+        dismissible ? "touch-none" : "",
+      ].join(" ")}
       style={{ boxShadow: "var(--shadow-sheet)" }}
     >
-      {!full && <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border" />}
+      {!full && <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border" />}
       {children}
     </motion.section>
   );
 }
+
 
 function HomeSheet({ onSearch, drivers }: { onSearch: () => void; drivers: NearbyDriver[] }) {
   const onlineCount = drivers.length;
