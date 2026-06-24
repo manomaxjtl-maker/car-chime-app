@@ -108,7 +108,7 @@ function RideApp() {
   );
 }
 
-function MapCanvas({ stage, drivers }: { stage: Stage; drivers: NearbyDriver[] }) {
+function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: NearbyDriver[]; refreshMs: number }) {
   return (
     <div className="absolute inset-0">
       <motion.img
@@ -127,7 +127,7 @@ function MapCanvas({ stage, drivers }: { stage: Stage; drivers: NearbyDriver[] }
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
         </span>
-        Mapa ao vivo
+        Mapa ao vivo · {Math.round(refreshMs / 100) / 10}s
       </div>
 
       <motion.div className="absolute left-1/2 top-[38%] -translate-x-1/2" initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
@@ -137,27 +137,38 @@ function MapCanvas({ stage, drivers }: { stage: Stage; drivers: NearbyDriver[] }
         </div>
       </motion.div>
 
-      {stage !== "trip" && drivers.map((d) => (
-        <motion.div
-          key={d.id}
-          className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
-          animate={{ left: `${d.x}%`, top: `${d.y}%` }}
-          transition={{ duration: 1.8, ease: "easeInOut" }}
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
-            {d.type === "car" ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
-                <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
-              </svg>
-            )}
-          </div>
-        </motion.div>
-      ))}
+      <AnimatePresence>
+        {stage !== "trip" && drivers.map((d) => (
+          <motion.div
+            key={d.id}
+            className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ left: `${d.x}%`, top: `${d.y}%`, scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{
+              left:  { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
+              top:   { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
+              scale: { type: "spring", stiffness: 320, damping: 22 },
+              opacity: { duration: 0.28 },
+            }}
+          >
+            <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
+              <span className="absolute -inset-1 rounded-full bg-foreground/10 animate-ping" />
+              {d.type === "car" ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
+                  <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
+                </svg>
+              )}
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
 
       {(stage === "select" || stage === "matching" || stage === "trip") && (
         <>
