@@ -49,12 +49,12 @@ function RideApp() {
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
-      <MapCanvas stage={stage} />
+      <MapCanvas stage={stage} drivers={visibleDrivers} />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 
       <AnimatePresence mode="wait">
         {stage === "home" && (
-          <Sheet key="home"><HomeSheet onSearch={() => setStage("search")} /></Sheet>
+          <Sheet key="home"><HomeSheet onSearch={() => setStage("search")} drivers={visibleDrivers} /></Sheet>
         )}
         {stage === "search" && (
           <Sheet key="search" full>
