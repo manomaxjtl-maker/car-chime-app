@@ -122,6 +122,28 @@ function MapCanvas({ stage, drivers }: { stage: Stage; drivers: NearbyDriver[] }
         </div>
       </motion.div>
 
+      {stage !== "trip" && drivers.map((d) => (
+        <motion.div
+          key={d.id}
+          className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
+          animate={{ left: `${d.x}%`, top: `${d.y}%` }}
+          transition={{ duration: 1.8, ease: "easeInOut" }}
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
+            {d.type === "car" ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
+                <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
+              </svg>
+            )}
+          </div>
+        </motion.div>
+      ))}
+
       {(stage === "select" || stage === "matching" || stage === "trip") && (
         <>
           <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
