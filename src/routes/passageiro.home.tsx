@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent } from "framer-motion";
 import mapBw from "@/assets/map-bw.jpg";
 import { BottomNav } from "@/components/BottomNav";
 import {
@@ -8,6 +8,24 @@ import {
   type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
 import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
+
+// ---------- Simulated reverse geocoding (Luanda) ----------
+const STREETS = [
+  "Rua Cmdt. Valódia", "Av. 4 de Fevereiro", "Rua Amílcar Cabral",
+  "Rua Rainha Ginga", "Av. Comandante Gika", "Av. Hoji-ya-Henda",
+  "Rua Marien N'Gouabi", "Av. Deolinda Rodrigues", "Rua Kwame Nkrumah",
+  "Av. Pedro de Castro V.-Dúnem", "Rua da Missão", "Av. Lenine",
+  "Rua Salvador Allende", "Av. Revolução de Outubro",
+];
+const AREAS = ["Ingombota", "Maianga", "Talatona", "Alvalade", "Miramar", "Kinaxixi", "Sambizanga", "Rangel", "Camama", "Benfica"];
+
+function reverseGeocode(wx: number, wy: number) {
+  const h = Math.abs(Math.round(wx * 0.37 + wy * 0.51));
+  const street = STREETS[h % STREETS.length];
+  const num = 12 + (Math.abs(Math.round(wx * 0.91 - wy * 0.43)) % 988);
+  const area = AREAS[(h >> 3) % AREAS.length];
+  return { street, num, area };
+}
 
 export const Route = createFileRoute("/passageiro/home")({
   ssr: false,
