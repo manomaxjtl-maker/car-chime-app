@@ -8,6 +8,8 @@ import {
   type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
 import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
+import { usePaymentMethod } from "@/lib/payments";
+
 
 export const Route = createFileRoute("/passageiro/home")({
   ssr: false,
