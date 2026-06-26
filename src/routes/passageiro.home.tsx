@@ -8,6 +8,8 @@ import {
   type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
 import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
+import { usePaymentMethod } from "@/lib/payments";
+
 
 export const Route = createFileRoute("/passageiro/home")({
   ssr: false,
@@ -534,13 +536,8 @@ function SelectSheet({
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
-        <div className="flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
-          <span className="text-sm font-medium">Multicaixa Express</span>
-        </div>
-        <Link to="/passageiro/pagamentos" className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Trocar</Link>
-      </div>
+      <PaymentRow />
+
 
       <button
         onClick={onConfirm}
@@ -551,6 +548,39 @@ function SelectSheet({
     </div>
   );
 }
+
+function PaymentRow() {
+  const { method, cycle } = usePaymentMethod();
+  const iconFor = (k: string) => {
+    if (k === "card") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>;
+    if (k === "cash") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>;
+    return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 21V5a2 2 0 0 1 2-2h5a4 4 0 0 1 0 8H7"/></svg>;
+  };
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3 overflow-hidden rounded-2xl bg-secondary px-4 py-3">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={method.id}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          className="flex min-w-0 items-center gap-2"
+        >
+          {iconFor(method.icon)}
+          <span className="truncate text-sm font-medium">{method.label}</span>
+        </motion.div>
+      </AnimatePresence>
+      <button
+        onClick={cycle}
+        className="shrink-0 rounded-full bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border"
+      >
+        Trocar
+      </button>
+    </div>
+  );
+}
+
 
 function MatchingSheet({ ride, onCancel }: { ride: Ride; onCancel: () => void }) {
   const label = ride.type === "moto" ? "motociclistas" : "motoristas";
