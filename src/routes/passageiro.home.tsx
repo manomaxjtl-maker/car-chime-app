@@ -83,11 +83,19 @@ function RideApp() {
           <Sheet key="home">
             <HomeSheet
               onSearch={() => setStage("search")}
+              onExplore={() => setStage("explore")}
               drivers={visibleDrivers}
               refreshId={refreshId}
               onRefreshChange={setRefreshId}
             />
           </Sheet>
+        )}
+        {stage === "explore" && (
+          <ExploreMap
+            key="explore"
+            onClose={() => setStage("home")}
+            onConfirm={(s) => { setDestination(s); setStage("select"); }}
+          />
         )}
         {stage === "search" && (
           <Sheet key="search" peek onDismiss={() => setStage("home")}>
