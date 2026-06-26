@@ -698,3 +698,282 @@ function CancelModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
     </motion.div>
   );
 }
+
+// ============================================================
+// Explore Map — pan, zoom, tap-to-pin, reverse-geocode, recenter
+// ============================================================
+function ExploreMap({
+  onClose, onConfirm,
+}: { onClose: () => void; onConfirm: (s: Suggestion) => void }) {
+  const px = useMotionValue(0);
+  const py = useMotionValue(0);
+  const [scale, setScale] = useState(1.35);
+  const [addr, setAddr] = useState(() => reverseGeocode(0, 0));
+  const [marker, setMarker] = useState<{ x: number; y: number } | null>(null);
+  const [mode, setMode] = useState<"origem" | "destino">("destino");
+  const [recentering, setRecentering] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const downPos = useRef<{ x: number; y: number; t: number } | null>(null);
+
+  function refreshAddr(wx: number, wy: number) {
+    setAddr(reverseGeocode(wx, wy));
+  }
+
+  // Update address from current pan (center pin) — debounced
+  useMotionValueEvent(px, "change", () => {
+    if (marker) return;
+    const wx = -px.get() / scale;
+    const wy = -py.get() / scale;
+    refreshAddr(wx, wy);
+  });
+  useMotionValueEvent(py, "change", () => {
+    if (marker) return;
+    const wx = -px.get() / scale;
+    const wy = -py.get() / scale;
+    refreshAddr(wx, wy);
+  });
+
+  function onPointerDown(e: React.PointerEvent) {
+    downPos.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+  }
+  function onPointerUp(e: React.PointerEvent) {
+    const d = downPos.current;
+    downPos.current = null;
+    if (!d || !containerRef.current) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    const moved = Math.hypot(dx, dy);
+    if (moved > 6 || Date.now() - d.t > 500) return; // it was a drag
+    const rect = containerRef.current.getBoundingClientRect();
+    const sx = e.clientX - rect.left - rect.width / 2;
+    const sy = e.clientY - rect.top - rect.height / 2;
+    const wx = (sx - px.get()) / scale;
+    const wy = (sy - py.get()) / scale;
+    setMarker({ x: wx, y: wy });
+    refreshAddr(wx, wy);
+  }
+
+  function zoomBy(delta: number) {
+    setScale((s) => Math.max(0.8, Math.min(2.6, +(s + delta).toFixed(2))));
+  }
+
+  function centerOnMe() {
+    setRecentering(true);
+    setMarker(null);
+    animate(px, 0, { type: "spring", stiffness: 220, damping: 28 });
+    animate(py, 0, { type: "spring", stiffness: 220, damping: 28 });
+    refreshAddr(0, 0);
+    setTimeout(() => setRecentering(false), 700);
+  }
+
+  function clearMarker() {
+    setMarker(null);
+    refreshAddr(-px.get() / scale, -py.get() / scale);
+  }
+
+  function confirmPick() {
+    const subtitle = `${addr.area}, Luanda`;
+    onConfirm({
+      title: `${addr.street}, ${addr.num}`,
+      subtitle,
+      eta: "— min",
+    });
+  }
+
+  return (
+    <motion.div
+      key="explore-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="absolute inset-0 z-30"
+    >
+      {/* Interactive map */}
+      <div
+        ref={containerRef}
+        className="absolute inset-0 overflow-hidden bg-background touch-none select-none"
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+      >
+        <motion.div
+          drag
+          dragMomentum
+          dragTransition={{ power: 0.25, timeConstant: 280 }}
+          style={{ x: px, y: py, scale }}
+          className="absolute inset-0 will-change-transform"
+        >
+          <img
+            src={mapBw}
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-60"
+            draggable={false}
+          />
+          {/* Tapped marker — anchored in world coordinates so it pans/zooms with the map */}
+          {marker && (
+            <motion.div
+              initial={{ scale: 0, y: -10, opacity: 0 }}
+              animate={{ scale: 1 / scale, y: 0, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 320, damping: 22 }}
+              className="absolute left-1/2 top-1/2 origin-bottom"
+              style={{ transform: `translate(${marker.x}px, ${marker.y}px) translate(-50%, -100%) scale(${1 / scale})` }}
+            >
+              <PinShape variant="solid" />
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* Center pin (only when no marker dropped) */}
+        <AnimatePresence>
+          {!marker && (
+            <motion.div
+              key="center-pin"
+              initial={{ y: -12, opacity: 0 }}
+              animate={{ y: recentering ? -4 : 0, opacity: 1 }}
+              exit={{ y: -12, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 280, damping: 20 }}
+              className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full"
+            >
+              <PinShape variant="outline" />
+              <div className="mx-auto mt-1 h-1.5 w-1.5 rounded-full bg-foreground/60 shadow" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Soft vignette */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_50%,var(--color-background)_95%)]" />
+      </div>
+
+      {/* Top bar */}
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 pt-6">
+        <button
+          onClick={onClose}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-card shadow-md ring-1 ring-border"
+          aria-label="Voltar"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div className="rounded-full bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground shadow-md ring-1 ring-border">
+          Escolher no mapa
+        </div>
+        <div className="h-11 w-11" />
+      </div>
+
+      {/* Right-side controls */}
+      <div className="absolute right-4 top-24 z-20 flex flex-col gap-2">
+        <button
+          onClick={() => zoomBy(0.3)}
+          aria-label="Aproximar"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-lg font-semibold shadow-md ring-1 ring-border active:scale-95 transition"
+        >+</button>
+        <button
+          onClick={() => zoomBy(-0.3)}
+          aria-label="Afastar"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-card text-lg font-semibold shadow-md ring-1 ring-border active:scale-95 transition"
+        >−</button>
+        <motion.button
+          onClick={centerOnMe}
+          aria-label="Centralizar minha localização"
+          whileTap={{ scale: 0.92 }}
+          animate={recentering ? { rotate: 360 } : { rotate: 0 }}
+          transition={{ duration: 0.6, ease: "easeInOut" }}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-foreground text-background shadow-md ring-1 ring-border"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          </svg>
+        </motion.button>
+      </div>
+
+      {/* Quick search shortcut floating above card */}
+      <button
+        onClick={onClose}
+        className="absolute left-4 top-24 z-20 flex items-center gap-2 rounded-full bg-card/95 px-3 py-2 text-[12px] font-medium shadow-md ring-1 ring-border backdrop-blur active:scale-95 transition"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        Buscar por endereço
+      </button>
+
+      {/* Bottom address card */}
+      <motion.div
+        layout
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 280, damping: 30 }}
+        className="absolute inset-x-3 bottom-20 z-20 rounded-3xl bg-card p-4 ring-1 ring-border"
+        style={{ boxShadow: "var(--shadow-sheet)" }}
+      >
+        <div className="flex items-start gap-3">
+          <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              {marker ? "Local selecionado" : "Endereço no centro"}
+            </div>
+            <motion.div
+              key={`${addr.street}-${addr.num}`}
+              initial={{ y: -4, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              className="truncate text-[15px] font-semibold"
+            >
+              {addr.street}, {addr.num}
+            </motion.div>
+            <div className="truncate text-[12px] text-muted-foreground">{addr.area}, Luanda</div>
+          </div>
+          {marker && (
+            <button
+              onClick={clearMarker}
+              className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+            >
+              limpar
+            </button>
+          )}
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-1 rounded-2xl bg-secondary p-1">
+          {([
+            { id: "origem" as const,  label: "Definir como origem" },
+            { id: "destino" as const, label: "Definir como destino" },
+          ]).map((opt) => {
+            const active = mode === opt.id;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => setMode(opt.id)}
+                className={`rounded-xl py-2 text-[12px] font-medium transition ${active ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground"}`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={confirmPick}
+          className="mt-3 w-full rounded-2xl bg-foreground py-3.5 text-[14px] font-semibold text-background transition active:scale-[0.99]"
+        >
+          Confirmar {mode} aqui
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function PinShape({ variant }: { variant: "solid" | "outline" }) {
+  return (
+    <div className="relative">
+      <svg width="34" height="44" viewBox="0 0 34 44" fill="none">
+        <path
+          d="M17 2c8.3 0 15 6.6 15 14.7C32 27.5 17 42 17 42S2 27.5 2 16.7C2 8.6 8.7 2 17 2Z"
+          fill={variant === "solid" ? "currentColor" : "var(--color-card)"}
+          stroke="currentColor"
+          strokeWidth="2.4"
+          className="text-foreground drop-shadow"
+        />
+        <circle cx="17" cy="16" r="5" fill={variant === "solid" ? "var(--color-card)" : "currentColor"} className="text-foreground" />
+      </svg>
+    </div>
+  );
+}
