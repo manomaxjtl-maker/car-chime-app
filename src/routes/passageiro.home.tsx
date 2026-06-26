@@ -38,7 +38,7 @@ export const Route = createFileRoute("/passageiro/home")({
   component: RideApp,
 });
 
-type Stage = "home" | "search" | "select" | "matching" | "trip";
+type Stage = "home" | "explore" | "search" | "select" | "matching" | "trip";
 
 const REFRESH_OPTIONS: { id: "slow" | "normal" | "fast"; label: string; ms: number }[] = [
   { id: "slow",   label: "Lento",  ms: 4000 },
