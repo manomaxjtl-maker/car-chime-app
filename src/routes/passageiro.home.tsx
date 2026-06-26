@@ -536,13 +536,8 @@ function SelectSheet({
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
-        <div className="flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
-          <span className="text-sm font-medium">Multicaixa Express</span>
-        </div>
-        <Link to="/passageiro/pagamentos" className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Trocar</Link>
-      </div>
+      <PaymentRow />
+
 
       <button
         onClick={onConfirm}
