@@ -304,9 +304,10 @@ function Sheet({
 
 
 function HomeSheet({
-  onSearch, drivers, refreshId, onRefreshChange,
+  onSearch, onExplore, drivers, refreshId, onRefreshChange,
 }: {
   onSearch: () => void;
+  onExplore: () => void;
   drivers: NearbyDriver[];
   refreshId: "slow" | "normal" | "fast";
   onRefreshChange: (id: "slow" | "normal" | "fast") => void;
@@ -322,6 +323,14 @@ function HomeSheet({
         <span className="text-sm text-muted-foreground">Buscar destino</span>
         <span className="ml-auto rounded-md bg-background px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border">Agora</span>
       </button>
+
+      <button onClick={onExplore} className="mt-2 flex w-full items-center gap-3 rounded-2xl bg-foreground px-4 py-3.5 text-left text-background transition active:scale-[0.99]">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span className="text-sm font-semibold">Escolher no mapa</span>
+        <span className="ml-auto text-[10px] font-medium uppercase tracking-wider opacity-70">Arraste · Toque · Zoom</span>
+      </button>
+
+
 
       <div className="mt-5">
         <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Atalhos</div>
