@@ -60,6 +60,29 @@
   --shadow-elev: 0 10px 40px -10px oklch(0 0 0 / 0.7);
 }
 
+/* Light (preto e branco invertido) */
+.light {
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.10 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.10 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.10 0 0);
+  --primary: oklch(0.10 0 0);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.10 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.10 0 0);
+  --accent-foreground: oklch(0.99 0 0);
+  --border: oklch(0.90 0 0);
+  --input: oklch(0.90 0 0);
+  --ring: oklch(0.10 0 0);
+  --shadow-sheet: 0 -20px 60px -10px oklch(0 0 0 / 0.12);
+  --shadow-elev: 0 10px 40px -10px oklch(0 0 0 / 0.18);
+}
+
 @layer base {
   * { border-color: var(--color-border); }
   html, body { height: 100%; }
@@ -69,5 +92,41 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     font-feature-settings: "cv11", "ss01";
+    transition: background-color 240ms ease, color 240ms ease;
+  }
+
+  /* GPU-friendly micro-interactions on every tappable element */
+  button, a, [role="button"], [data-tappable] {
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 180ms ease,
+                background-color 180ms ease,
+                box-shadow 180ms ease,
+                color 180ms ease;
+    will-change: transform;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:active, a:active, [role="button"]:active, [data-tappable]:active {
+    transform: scale(0.975);
+    opacity: 0.92;
+  }
+  button:disabled, button[aria-disabled="true"] {
+    transform: none !important;
   }
 }
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@utility skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-secondary) 0%,
+    color-mix(in oklab, var(--color-secondary) 60%, var(--color-foreground) 8%) 50%,
+    var(--color-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 0.75rem;
+}
+
