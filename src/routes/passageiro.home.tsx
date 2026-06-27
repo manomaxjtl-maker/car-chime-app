@@ -845,8 +845,8 @@ function MatchingSheet({ ride, onCancel, onChat }: { ride: Ride; onCancel: () =>
 }
 
 function TripSheet({
-  ride, destination, onCancel, onFinish,
-}: { ride: Ride; destination: Suggestion; onCancel: () => void; onFinish: () => void }) {
+  ride, destination, onCancel, onFinish, onChat,
+}: { ride: Ride; destination: Suggestion; onCancel: () => void; onFinish: () => void; onChat: () => void }) {
   const d = DRIVERS[ride.type];
   return (
     <div className="px-5 pb-6 pt-4">
@@ -858,9 +858,7 @@ function TripSheet({
         <div className="flex-1">
           <div className="flex items-center gap-2 text-sm font-semibold">
             {d.name}
-            <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border">
-              {ride.type === "moto" ? "Moto" : "Carro"}
-            </span>
+            <TrustBadge driver={d} />
           </div>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-foreground"><path d="m12 2 3 7 7 .6-5.3 4.7L18 22l-6-3.6L6 22l1.3-7.7L2 9.6 9 9z"/></svg>
@@ -868,10 +866,14 @@ function TripSheet({
           </div>
           <div className="text-[11px] text-muted-foreground">{d.vehicle} · {d.plate}</div>
         </div>
-        <button className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background" aria-label="Ligar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg>
+        <button onClick={onChat} className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background" aria-label="Conversar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12Z"/></svg>
         </button>
+        <a href="tel:+244923000000" className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background" aria-label="Ligar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg>
+        </a>
       </div>
+
 
       <div className="mt-3 flex items-start gap-3 rounded-2xl border border-border p-3">
         <div className="mt-1 flex flex-col items-center">
