@@ -1,15 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import mapBw from "@/assets/map-bw.jpg";
 import { BottomNav } from "@/components/BottomNav";
 import {
   DRIVERS, fmtKz, RIDES, SUGGESTIONS,
-  type Ride, type Suggestion, type VehicleType,
+  type Driver, type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
 import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
 import { usePaymentMethod } from "@/lib/payments";
 import { useDynamicPrice, computeDynamicPrice as _computeDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
+import { computeTrust, type TrustResult } from "@/lib/driver-trust";
+
+const DRIVER_META: Record<VehicleType, { joinedMonths: number; cancelRate: number }> = {
+  car:  { joinedMonths: 26, cancelRate: 0.03 },
+  moto: { joinedMonths: 14, cancelRate: 0.05 },
+};
 
 
 export const Route = createFileRoute("/passageiro/home")({
@@ -37,6 +43,7 @@ function RideApp() {
   const [selected, setSelected] = useState<Ride>(RIDES[0]);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [refreshId, setRefreshId] = useState<"slow" | "normal" | "fast">("normal");
+  const [chatOpen, setChatOpen] = useState(false);
   const refreshMs = REFRESH_OPTIONS.find((o) => o.id === refreshId)!.ms;
   const nearby = useNearbyDrivers(refreshMs);
   const typeFilter: VehicleType | null =
@@ -56,7 +63,11 @@ function RideApp() {
     setDestination(null);
     setSelected(RIDES[0]);
     setConfirmCancel(false);
+    setChatOpen(false);
   }
+
+  const canChat = stage === "matching" || stage === "trip";
+  const chatDriver = canChat ? DRIVERS[selected.type] : null;
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
@@ -93,17 +104,20 @@ function RideApp() {
           </Sheet>
         )}
         {stage === "matching" && (
-          <Sheet key="matching"><MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} /></Sheet>
+          <Sheet key="matching"><MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} /></Sheet>
         )}
         {stage === "trip" && destination && (
           <Sheet key="trip">
-            <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} />
+            <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} onChat={() => setChatOpen(true)} />
           </Sheet>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {confirmCancel && <CancelModal onClose={() => setConfirmCancel(false)} onConfirm={reset} />}
+        {chatOpen && chatDriver && destination && (
+          <ChatOverlay driver={chatDriver} destination={destination} onClose={() => setChatOpen(false)} />
+        )}
       </AnimatePresence>
 
       <BottomNav variant="passageiro" />
@@ -112,20 +126,214 @@ function RideApp() {
 }
 
 function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: NearbyDriver[]; refreshMs: number }) {
-  return (
-    <div className="absolute inset-0">
-      <motion.img
-        src={mapBw}
-        alt=""
-        width={1024}
-        height={1536}
-        className="absolute inset-0 h-full w-full object-cover opacity-50"
-        animate={{ scale: stage === "trip" ? 1.18 : 1.06, x: stage === "select" ? -16 : 0 }}
-        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-      />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,var(--color-background)_85%)]" />
+  // Pan + pinch-zoom state. Transform applies to the inner map layer only;
+  // the user pin and live HUD stay fixed on top.
+  const [t, setT] = useState({ x: 0, y: 0, scale: 1 });
+  const [active, setActive] = useState(false);
+  const rafRef = useRef<number | null>(null);
+  const stateRef = useRef({
+    pointers: new Map<number, { x: number; y: number }>(),
+    startMidX: 0, startMidY: 0,
+    baseX: 0, baseY: 0,
+    startDist: 0, baseScale: 1,
+    lastX: 0, lastY: 0, lastT: 0,
+    vx: 0, vy: 0,
+  });
 
-      <div className="absolute left-1/2 top-20 z-10 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow ring-1 ring-border backdrop-blur">
+  function clampScale(s: number) { return Math.max(0.8, Math.min(3, s)); }
+
+  function stopInertia() {
+    if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+  }
+
+  function startInertia() {
+    const s = stateRef.current;
+    const step = () => {
+      s.vx *= 0.92; s.vy *= 0.92;
+      if (Math.abs(s.vx) < 0.2 && Math.abs(s.vy) < 0.2) { rafRef.current = null; return; }
+      setT((p) => ({ ...p, x: p.x + s.vx, y: p.y + s.vy }));
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+  }
+
+  function onPointerDown(e: React.PointerEvent) {
+    stopInertia();
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    const s = stateRef.current;
+    s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    s.baseX = t.x; s.baseY = t.y; s.baseScale = t.scale;
+    s.lastX = e.clientX; s.lastY = e.clientY; s.lastT = performance.now();
+    s.vx = 0; s.vy = 0;
+    if (s.pointers.size === 2) {
+      const [a, b] = Array.from(s.pointers.values());
+      s.startDist = Math.hypot(b.x - a.x, b.y - a.y);
+      s.startMidX = (a.x + b.x) / 2; s.startMidY = (a.y + b.y) / 2;
+    } else {
+      s.startMidX = e.clientX; s.startMidY = e.clientY;
+    }
+    setActive(true);
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    const s = stateRef.current;
+    if (!s.pointers.has(e.pointerId)) return;
+    s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (s.pointers.size >= 2) {
+      const [a, b] = Array.from(s.pointers.values());
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      const midX = (a.x + b.x) / 2; const midY = (a.y + b.y) / 2;
+      const scale = clampScale(s.baseScale * (dist / (s.startDist || dist)));
+      const dx = midX - s.startMidX; const dy = midY - s.startMidY;
+      setT({ x: s.baseX + dx, y: s.baseY + dy, scale });
+    } else {
+      const dx = e.clientX - s.startMidX; const dy = e.clientY - s.startMidY;
+      setT((p) => ({ ...p, x: s.baseX + dx, y: s.baseY + dy }));
+      const now = performance.now();
+      const dt = Math.max(1, now - s.lastT);
+      s.vx = ((e.clientX - s.lastX) / dt) * 16;
+      s.vy = ((e.clientY - s.lastY) / dt) * 16;
+      s.lastX = e.clientX; s.lastY = e.clientY; s.lastT = now;
+    }
+  }
+
+  function onPointerUp(e: React.PointerEvent) {
+    const s = stateRef.current;
+    s.pointers.delete(e.pointerId);
+    if (s.pointers.size === 0) {
+      setActive(false);
+      if (Math.hypot(s.vx, s.vy) > 1) startInertia();
+    } else {
+      const next = Array.from(s.pointers.values())[0];
+      s.startMidX = next.x; s.startMidY = next.y;
+      s.baseX = t.x; s.baseY = t.y;
+    }
+  }
+
+  function onWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    setT((p) => ({ ...p, scale: clampScale(p.scale * (e.deltaY < 0 ? 1.1 : 0.9)) }));
+  }
+
+  function resetView() { stopInertia(); setT({ x: 0, y: 0, scale: 1 }); }
+  function zoom(delta: number) { setT((p) => ({ ...p, scale: clampScale(p.scale * delta) })); }
+
+  useEffect(() => () => stopInertia(), []);
+
+  const layerStyle: React.CSSProperties = {
+    transform: `translate3d(${t.x}px, ${t.y}px, 0) scale(${t.scale})`,
+    transformOrigin: "50% 50%",
+    transition: active ? "transform 0.1s ease-out" : "transform 0.28s cubic-bezier(0.22,1,0.36,1)",
+    willChange: "transform",
+  };
+
+  return (
+    <div
+      className="absolute inset-0 touch-none select-none overflow-hidden"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onWheel={onWheel}
+    >
+      {/* Pan/zoom layer */}
+      <div className="absolute inset-0" style={layerStyle}>
+        <img
+          src={mapBw}
+          alt=""
+          width={1024}
+          height={1536}
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-cover opacity-60 pointer-events-none"
+        />
+
+        {/* Drivers move with the map */}
+        <AnimatePresence>
+          {stage !== "trip" && drivers.map((d) => (
+            <motion.div
+              key={d.id}
+              className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ left: `${d.x}%`, top: `${d.y}%`, scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{
+                left:  { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
+                top:   { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
+                scale: { type: "spring", stiffness: 320, damping: 22 },
+                opacity: { duration: 0.28 },
+              }}
+            >
+              <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
+                <span className="absolute -inset-1 rounded-full bg-foreground/10 animate-ping" />
+                {d.type === "car" ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
+                    <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
+                  </svg>
+                )}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {(stage === "select" || stage === "matching" || stage === "trip") && (
+          <>
+            <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <motion.path
+                d="M 50 38 C 60 50, 35 60, 55 78"
+                stroke="currentColor"
+                strokeWidth="0.6"
+                strokeLinecap="round"
+                strokeDasharray="2 1.5"
+                fill="none"
+                className="text-foreground"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1.1, ease: "easeOut" }}
+              />
+            </svg>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.5, type: "spring", stiffness: 280, damping: 18 }}
+              className="absolute left-[55%] top-[78%] -translate-x-1/2 -translate-y-full"
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-foreground text-background">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" /></svg>
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {(stage === "matching" || stage === "trip") && (
+          <motion.div
+            initial={{ left: "30%", top: "60%" }}
+            animate={
+              stage === "trip"
+                ? { left: ["30%", "40%", "48%", "55%"], top: ["60%", "55%", "50%", "42%"] }
+                : { left: ["30%", "35%", "30%"], top: ["60%", "62%", "60%"] }
+            }
+            transition={{ duration: stage === "trip" ? 8 : 2.4, repeat: stage === "trip" ? 0 : Infinity, ease: "easeInOut" }}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
+                <circle cx="8" cy="17" r="1.5"/><circle cx="16" cy="17" r="1.5"/>
+              </svg>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Fixed overlays */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,var(--color-background)_85%)]" />
+
+      <div className="pointer-events-none absolute left-1/2 top-20 z-10 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow ring-1 ring-border backdrop-blur">
         <span className="relative flex h-1.5 w-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -133,94 +341,26 @@ function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: Nearb
         Mapa ao vivo · {Math.round(refreshMs / 100) / 10}s
       </div>
 
-      <motion.div className="absolute left-1/2 top-[38%] -translate-x-1/2" initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+      {/* User pin — fixed at center */}
+      <div className="pointer-events-none absolute left-1/2 top-[38%] -translate-x-1/2 z-[6]">
         <div className="relative">
           <div className="absolute -inset-3 animate-ping rounded-full bg-foreground/20" />
           <div className="h-3.5 w-3.5 rounded-full bg-foreground ring-4 ring-background" />
         </div>
-      </motion.div>
+      </div>
 
-      <AnimatePresence>
-        {stage !== "trip" && drivers.map((d) => (
-          <motion.div
-            key={d.id}
-            className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ left: `${d.x}%`, top: `${d.y}%`, scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{
-              left:  { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
-              top:   { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
-              scale: { type: "spring", stiffness: 320, damping: 22 },
-              opacity: { duration: 0.28 },
-            }}
-          >
-            <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
-              <span className="absolute -inset-1 rounded-full bg-foreground/10 animate-ping" />
-              {d.type === "car" ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
-                  <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
-                </svg>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-
-
-      {(stage === "select" || stage === "matching" || stage === "trip") && (
-        <>
-          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <motion.path
-              d="M 50 38 C 60 50, 35 60, 55 78"
-              stroke="currentColor"
-              strokeWidth="0.6"
-              strokeLinecap="round"
-              strokeDasharray="2 1.5"
-              fill="none"
-              className="text-foreground"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 1.1, ease: "easeOut" }}
-            />
-          </svg>
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.5, type: "spring", stiffness: 280, damping: 18 }}
-            className="absolute left-[55%] top-[78%] -translate-x-1/2 -translate-y-full"
-          >
-            <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-foreground text-background">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" /></svg>
-            </div>
-          </motion.div>
-        </>
-      )}
-
-      {(stage === "matching" || stage === "trip") && (
-        <motion.div
-          initial={{ left: "30%", top: "60%" }}
-          animate={
-            stage === "trip"
-              ? { left: ["30%", "40%", "48%", "55%"], top: ["60%", "55%", "50%", "42%"] }
-              : { left: ["30%", "35%", "30%"], top: ["60%", "62%", "60%"] }
-          }
-          transition={{ duration: stage === "trip" ? 8 : 2.4, repeat: stage === "trip" ? 0 : Infinity, ease: "easeInOut" }}
-          className="absolute -translate-x-1/2 -translate-y-1/2"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
-              <circle cx="8" cy="17" r="1.5"/><circle cx="16" cy="17" r="1.5"/>
-            </svg>
-          </div>
-        </motion.div>
-      )}
+      {/* Map controls */}
+      <div className="absolute right-3 top-32 z-10 flex flex-col gap-1.5">
+        <button onClick={() => zoom(1.2)} aria-label="Aproximar" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-foreground shadow ring-1 ring-border">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button onClick={() => zoom(1/1.2)} aria-label="Afastar" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-foreground shadow ring-1 ring-border">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14"/></svg>
+        </button>
+        <button onClick={resetView} aria-label="Centrar" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-foreground shadow ring-1 ring-border">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </button>
+      </div>
     </div>
   );
 }
@@ -474,7 +614,10 @@ function SelectSheet({
       <div className="mt-3 flex items-center gap-3 rounded-2xl bg-secondary p-3">
         <img src={driver.photo} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-border" />
         <div className="flex-1">
-          <div className="text-sm font-semibold">{driver.name}</div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            {driver.name}
+            <TrustBadge driver={driver} />
+          </div>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-foreground"><path d="m12 2 3 7 7 .6-5.3 4.7L18 22l-6-3.6L6 22l1.3-7.7L2 9.6 9 9z"/></svg>
             <span className="font-medium text-foreground">{driver.rating.toFixed(2)}</span>
@@ -676,7 +819,7 @@ function PaymentRow() {
 }
 
 
-function MatchingSheet({ ride, onCancel }: { ride: Ride; onCancel: () => void }) {
+function MatchingSheet({ ride, onCancel, onChat }: { ride: Ride; onCancel: () => void; onChat: () => void }) {
   const label = ride.type === "moto" ? "motociclistas" : "motoristas";
   return (
     <div className="px-5 pb-7 pt-6 text-center">
@@ -689,16 +832,21 @@ function MatchingSheet({ ride, onCancel }: { ride: Ride; onCancel: () => void })
       <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
         Pedido enviado apenas a {label} disponíveis. {fmtKz(ride.priceKz)} · chega em {ride.eta}.
       </p>
-      <button onClick={onCancel} className="mt-5 w-full rounded-2xl bg-secondary py-3 text-sm font-medium">
-        Cancelar pedido
-      </button>
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        <button onClick={onChat} className="rounded-2xl bg-secondary py-3 text-sm font-medium">
+          Falar com motorista
+        </button>
+        <button onClick={onCancel} className="rounded-2xl bg-secondary py-3 text-sm font-medium">
+          Cancelar pedido
+        </button>
+      </div>
     </div>
   );
 }
 
 function TripSheet({
-  ride, destination, onCancel, onFinish,
-}: { ride: Ride; destination: Suggestion; onCancel: () => void; onFinish: () => void }) {
+  ride, destination, onCancel, onFinish, onChat,
+}: { ride: Ride; destination: Suggestion; onCancel: () => void; onFinish: () => void; onChat: () => void }) {
   const d = DRIVERS[ride.type];
   return (
     <div className="px-5 pb-6 pt-4">
@@ -710,9 +858,7 @@ function TripSheet({
         <div className="flex-1">
           <div className="flex items-center gap-2 text-sm font-semibold">
             {d.name}
-            <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border">
-              {ride.type === "moto" ? "Moto" : "Carro"}
-            </span>
+            <TrustBadge driver={d} />
           </div>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-foreground"><path d="m12 2 3 7 7 .6-5.3 4.7L18 22l-6-3.6L6 22l1.3-7.7L2 9.6 9 9z"/></svg>
@@ -720,10 +866,14 @@ function TripSheet({
           </div>
           <div className="text-[11px] text-muted-foreground">{d.vehicle} · {d.plate}</div>
         </div>
-        <button className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background" aria-label="Ligar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg>
+        <button onClick={onChat} className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background" aria-label="Conversar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12Z"/></svg>
         </button>
+        <a href="tel:+244923000000" className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background" aria-label="Ligar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg>
+        </a>
       </div>
+
 
       <div className="mt-3 flex items-start gap-3 rounded-2xl border border-border p-3">
         <div className="mt-1 flex flex-col items-center">
@@ -786,4 +936,159 @@ function CancelModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
       </motion.div>
     </motion.div>
   );
+}
+
+function TrustBadge({ driver }: { driver: Driver }) {
+  const meta = DRIVER_META[driver.type];
+  const trust: TrustResult = computeTrust({
+    rating: driver.rating,
+    trips: driver.trips,
+    joinedMonths: meta.joinedMonths,
+    cancelRate: meta.cancelRate,
+  });
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1"
+      style={{ background: trust.bg, color: trust.color, borderColor: trust.ring, boxShadow: "inset 0 0 0 1px " + trust.ring }}
+      title={`Confiança ${trust.score}/100`}
+    >
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.39 5.96L21 9l-5 4.6L17.5 21 12 17.7 6.5 21 8 13.6 3 9l6.61-1.04L12 2z"/></svg>
+      {trust.medal}
+      <span className="tabular-nums opacity-80">· {trust.score}</span>
+    </span>
+  );
+}
+
+function ChatOverlay({
+  driver, destination, onClose,
+}: { driver: Driver; destination: Suggestion; onClose: () => void }) {
+  const [messages, setMessages] = useState<{ id: string; from: "me" | "driver"; text: string; time: string }[]>([
+    { id: "m0", from: "driver", text: `Olá! Estou a caminho de ${destination.title.split(",")[0]}.`, time: nowHM() },
+  ]);
+  const [draft, setDraft] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  function send() {
+    const text = draft.trim();
+    if (!text) return;
+    const id = "m" + Date.now();
+    setMessages((m) => [...m, { id, from: "me", text, time: nowHM() }]);
+    setDraft("");
+    setTimeout(() => {
+      setMessages((m) => [...m, { id: id + "r", from: "driver", text: pickReply(text), time: nowHM() }]);
+    }, 900 + Math.random() * 700);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-[60] bg-background"
+    >
+      <motion.div
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 24, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 320, damping: 30 }}
+        className="flex h-full flex-col"
+      >
+        {/* Header */}
+        <div className="border-b border-border bg-card px-4 pt-5 pb-3">
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} aria-label="Fechar" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+            <div className="relative">
+              <img src={driver.photo} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-border" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-card" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="truncate text-sm font-semibold">{driver.name}</div>
+              <div className="flex items-center gap-1 text-[11px] text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Online
+              </div>
+            </div>
+            <a href="tel:+244923000000" aria-label="Ligar" className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg>
+            </a>
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-secondary px-3 py-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Local solicitado</div>
+              <div className="truncate text-[13px] font-medium">{destination.title}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 pb-24">
+          <div className="space-y-2">
+            {messages.map((m) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.2 }}
+                className={m.from === "me" ? "flex justify-end" : "flex justify-start"}
+              >
+                <div
+                  className={
+                    m.from === "me"
+                      ? "max-w-[78%] rounded-2xl rounded-br-md bg-black px-3.5 py-2 text-sm text-white shadow-sm"
+                      : "max-w-[78%] rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2 text-sm text-foreground ring-1 ring-border"
+                  }
+                >
+                  <div>{m.text}</div>
+                  <div className={"mt-0.5 text-[10px] tabular-nums " + (m.from === "me" ? "text-white/60" : "text-muted-foreground")}>{m.time}</div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Composer */}
+        <div className="border-t border-border bg-card px-3 py-3 pb-5">
+          <div className="flex items-center gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+              placeholder="Escreva uma mensagem…"
+              className="flex-1 rounded-full bg-secondary px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <button
+              onClick={send}
+              disabled={!draft.trim()}
+              aria-label="Enviar"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white disabled:opacity-40"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function nowHM() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+const REPLIES = [
+  "Ok, estou a chegar!",
+  "Confirmado. Já saí.",
+  "Pode aguardar um minuto, por favor.",
+  "Estou no portão principal.",
+  "Obrigado pela informação!",
+];
+function pickReply(_t: string) {
+  return REPLIES[Math.floor(Math.random() * REPLIES.length)];
 }
