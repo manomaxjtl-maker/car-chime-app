@@ -9,6 +9,7 @@ import {
 } from "@/lib/ryde-data";
 import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
 import { usePaymentMethod } from "@/lib/payments";
+import { useDynamicPrice, computeDynamicPrice as _computeDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
 
 
 export const Route = createFileRoute("/passageiro/home")({
@@ -504,6 +505,7 @@ function SelectSheet({
       <div className="mt-3 max-h-[28dvh] overflow-y-auto -mx-1 px-1">
         {filtered.map((r) => {
           const active = r.id === activeRide.id;
+          const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
           return (
             <button
               key={r.id}
@@ -528,13 +530,22 @@ function SelectSheet({
                 <div className="text-[11px] text-muted-foreground">Chega em {r.eta} · {r.tag}</div>
               </div>
               <div className="text-right">
-                <div className="text-[14px] font-semibold tabular-nums">{fmtKz(r.priceKz)}</div>
+                {rowPricing.surgePct > 0 ? (
+                  <>
+                    <div className="text-[11px] tabular-nums text-muted-foreground line-through">{fmtKz(rowPricing.basePrice)}</div>
+                    <div className="text-[14px] font-semibold tabular-nums">{fmtKz(rowPricing.finalPrice)}</div>
+                  </>
+                ) : (
+                  <div className="text-[14px] font-semibold tabular-nums">{fmtKz(r.priceKz)}</div>
+                )}
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">estimado</div>
               </div>
             </button>
           );
         })}
       </div>
+
+      <SurgePanel basePrice={activeRide.priceKz} keyHint={destination.title + ":" + activeRide.id} />
 
       <PaymentRow />
 
@@ -543,9 +554,92 @@ function SelectSheet({
         onClick={onConfirm}
         className="mt-3 w-full rounded-2xl bg-foreground py-4 text-[15px] font-semibold text-background transition active:scale-[0.99]"
       >
-        Confirmar {activeRide.name} · {fmtKz(activeRide.priceKz)}
+        Confirmar {activeRide.name} · {fmtKz(computeRowPricing(activeRide.priceKz, destination.title + ":" + activeRide.id).finalPrice)}
       </button>
+
+      <div className="mt-2 text-center text-[10.5px] text-muted-foreground">
+        O preço pode variar conforme a demanda
+      </div>
     </div>
+  );
+}
+
+// Stable helper so rows and panel agree on the same factors/price.
+function computeRowPricing(basePrice: number, keyHint: string) {
+  return computeDynamicPriceMemo(basePrice, keyHint);
+}
+
+const _cache = new Map<string, ReturnType<typeof _computeDynamicPrice>>();
+function computeDynamicPriceMemo(basePrice: number, keyHint: string) {
+  const k = `${basePrice}|${keyHint}`;
+  let v = _cache.get(k);
+  if (!v) { v = _computeDynamicPrice(basePrice, keyHint); _cache.set(k, v); }
+  return v;
+}
+
+function FactorIcon({ kind }: { kind: PricingFactor["icon"] }) {
+  if (kind === "rain") return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 14a5 5 0 1 0-9.5-2A4 4 0 0 0 7 20h9a4 4 0 0 0 0-6Z"/>
+      <path d="M8 22l-1 2M12 22l-1 2M16 22l-1 2"/>
+    </svg>
+  );
+  if (kind === "clock") return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+    </svg>
+  );
+  if (kind === "calendar") return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>
+    </svg>
+  );
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3s4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s-1 6 3 6 4-4 4-7c0-3-4-4-4-4Z"/>
+    </svg>
+  );
+}
+
+function SurgePanel({ basePrice, keyHint }: { basePrice: number; keyHint: string }) {
+  const pricing = useDynamicPrice(basePrice, keyHint);
+  if (pricing.surgePct === 0) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      className="mt-3 overflow-hidden rounded-2xl bg-secondary ring-1 ring-border"
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Preço dinâmico</div>
+          <div className="mt-0.5 flex items-baseline gap-2">
+            <span className="text-[12px] tabular-nums text-muted-foreground line-through">{fmtKz(pricing.basePrice)}</span>
+            <span className="text-lg font-semibold tabular-nums">{fmtKz(pricing.finalPrice)}</span>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full bg-orange-500 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white shadow-sm">
+          +{pricing.surgePct}%
+        </span>
+      </div>
+      <ul className="divide-y divide-border">
+        {pricing.factors.map((f) => (
+          <li key={f.id} className="flex items-center gap-3 px-4 py-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-foreground ring-1 ring-border">
+              <FactorIcon kind={f.icon} />
+            </span>
+            <div className="flex-1">
+              <div className="text-[13px] font-medium">{f.label}</div>
+              <div className="text-[11px] text-muted-foreground">{f.description}</div>
+            </div>
+            <span className="rounded-md bg-background px-2 py-0.5 text-[11px] font-semibold tabular-nums text-orange-600 ring-1 ring-border">
+              +{Math.round(f.surge * 100)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </motion.div>
   );
 }
 
