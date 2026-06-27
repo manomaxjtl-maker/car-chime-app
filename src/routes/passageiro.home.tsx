@@ -1,15 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import mapBw from "@/assets/map-bw.jpg";
 import { BottomNav } from "@/components/BottomNav";
 import {
   DRIVERS, fmtKz, RIDES, SUGGESTIONS,
-  type Ride, type Suggestion, type VehicleType,
+  type Driver, type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
 import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
 import { usePaymentMethod } from "@/lib/payments";
 import { useDynamicPrice, computeDynamicPrice as _computeDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
+import { computeTrust, type TrustResult } from "@/lib/driver-trust";
+
+const DRIVER_META: Record<VehicleType, { joinedMonths: number; cancelRate: number }> = {
+  car:  { joinedMonths: 26, cancelRate: 0.03 },
+  moto: { joinedMonths: 14, cancelRate: 0.05 },
+};
 
 
 export const Route = createFileRoute("/passageiro/home")({
