@@ -43,6 +43,7 @@ function RideApp() {
   const [selected, setSelected] = useState<Ride>(RIDES[0]);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [refreshId, setRefreshId] = useState<"slow" | "normal" | "fast">("normal");
+  const [chatOpen, setChatOpen] = useState(false);
   const refreshMs = REFRESH_OPTIONS.find((o) => o.id === refreshId)!.ms;
   const nearby = useNearbyDrivers(refreshMs);
   const typeFilter: VehicleType | null =
@@ -62,7 +63,11 @@ function RideApp() {
     setDestination(null);
     setSelected(RIDES[0]);
     setConfirmCancel(false);
+    setChatOpen(false);
   }
+
+  const canChat = stage === "matching" || stage === "trip";
+  const chatDriver = canChat ? DRIVERS[selected.type] : null;
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
@@ -99,17 +104,20 @@ function RideApp() {
           </Sheet>
         )}
         {stage === "matching" && (
-          <Sheet key="matching"><MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} /></Sheet>
+          <Sheet key="matching"><MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} /></Sheet>
         )}
         {stage === "trip" && destination && (
           <Sheet key="trip">
-            <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} />
+            <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} onChat={() => setChatOpen(true)} />
           </Sheet>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {confirmCancel && <CancelModal onClose={() => setConfirmCancel(false)} onConfirm={reset} />}
+        {chatOpen && chatDriver && destination && (
+          <ChatOverlay driver={chatDriver} destination={destination} onClose={() => setChatOpen(false)} />
+        )}
       </AnimatePresence>
 
       <BottomNav variant="passageiro" />
