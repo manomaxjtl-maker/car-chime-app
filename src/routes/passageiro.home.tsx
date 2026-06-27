@@ -126,20 +126,214 @@ function RideApp() {
 }
 
 function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: NearbyDriver[]; refreshMs: number }) {
-  return (
-    <div className="absolute inset-0">
-      <motion.img
-        src={mapBw}
-        alt=""
-        width={1024}
-        height={1536}
-        className="absolute inset-0 h-full w-full object-cover opacity-50"
-        animate={{ scale: stage === "trip" ? 1.18 : 1.06, x: stage === "select" ? -16 : 0 }}
-        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-      />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,var(--color-background)_85%)]" />
+  // Pan + pinch-zoom state. Transform applies to the inner map layer only;
+  // the user pin and live HUD stay fixed on top.
+  const [t, setT] = useState({ x: 0, y: 0, scale: 1 });
+  const [active, setActive] = useState(false);
+  const rafRef = useRef<number | null>(null);
+  const stateRef = useRef({
+    pointers: new Map<number, { x: number; y: number }>(),
+    startMidX: 0, startMidY: 0,
+    baseX: 0, baseY: 0,
+    startDist: 0, baseScale: 1,
+    lastX: 0, lastY: 0, lastT: 0,
+    vx: 0, vy: 0,
+  });
 
-      <div className="absolute left-1/2 top-20 z-10 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow ring-1 ring-border backdrop-blur">
+  function clampScale(s: number) { return Math.max(0.8, Math.min(3, s)); }
+
+  function stopInertia() {
+    if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+  }
+
+  function startInertia() {
+    const s = stateRef.current;
+    const step = () => {
+      s.vx *= 0.92; s.vy *= 0.92;
+      if (Math.abs(s.vx) < 0.2 && Math.abs(s.vy) < 0.2) { rafRef.current = null; return; }
+      setT((p) => ({ ...p, x: p.x + s.vx, y: p.y + s.vy }));
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+  }
+
+  function onPointerDown(e: React.PointerEvent) {
+    stopInertia();
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    const s = stateRef.current;
+    s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    s.baseX = t.x; s.baseY = t.y; s.baseScale = t.scale;
+    s.lastX = e.clientX; s.lastY = e.clientY; s.lastT = performance.now();
+    s.vx = 0; s.vy = 0;
+    if (s.pointers.size === 2) {
+      const [a, b] = Array.from(s.pointers.values());
+      s.startDist = Math.hypot(b.x - a.x, b.y - a.y);
+      s.startMidX = (a.x + b.x) / 2; s.startMidY = (a.y + b.y) / 2;
+    } else {
+      s.startMidX = e.clientX; s.startMidY = e.clientY;
+    }
+    setActive(true);
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    const s = stateRef.current;
+    if (!s.pointers.has(e.pointerId)) return;
+    s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (s.pointers.size >= 2) {
+      const [a, b] = Array.from(s.pointers.values());
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      const midX = (a.x + b.x) / 2; const midY = (a.y + b.y) / 2;
+      const scale = clampScale(s.baseScale * (dist / (s.startDist || dist)));
+      const dx = midX - s.startMidX; const dy = midY - s.startMidY;
+      setT({ x: s.baseX + dx, y: s.baseY + dy, scale });
+    } else {
+      const dx = e.clientX - s.startMidX; const dy = e.clientY - s.startMidY;
+      setT((p) => ({ ...p, x: s.baseX + dx, y: s.baseY + dy }));
+      const now = performance.now();
+      const dt = Math.max(1, now - s.lastT);
+      s.vx = ((e.clientX - s.lastX) / dt) * 16;
+      s.vy = ((e.clientY - s.lastY) / dt) * 16;
+      s.lastX = e.clientX; s.lastY = e.clientY; s.lastT = now;
+    }
+  }
+
+  function onPointerUp(e: React.PointerEvent) {
+    const s = stateRef.current;
+    s.pointers.delete(e.pointerId);
+    if (s.pointers.size === 0) {
+      setActive(false);
+      if (Math.hypot(s.vx, s.vy) > 1) startInertia();
+    } else {
+      const next = Array.from(s.pointers.values())[0];
+      s.startMidX = next.x; s.startMidY = next.y;
+      s.baseX = t.x; s.baseY = t.y;
+    }
+  }
+
+  function onWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    setT((p) => ({ ...p, scale: clampScale(p.scale * (e.deltaY < 0 ? 1.1 : 0.9)) }));
+  }
+
+  function resetView() { stopInertia(); setT({ x: 0, y: 0, scale: 1 }); }
+  function zoom(delta: number) { setT((p) => ({ ...p, scale: clampScale(p.scale * delta) })); }
+
+  useEffect(() => () => stopInertia(), []);
+
+  const layerStyle: React.CSSProperties = {
+    transform: `translate3d(${t.x}px, ${t.y}px, 0) scale(${t.scale})`,
+    transformOrigin: "50% 50%",
+    transition: active ? "transform 0.1s ease-out" : "transform 0.28s cubic-bezier(0.22,1,0.36,1)",
+    willChange: "transform",
+  };
+
+  return (
+    <div
+      className="absolute inset-0 touch-none select-none overflow-hidden"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onWheel={onWheel}
+    >
+      {/* Pan/zoom layer */}
+      <div className="absolute inset-0" style={layerStyle}>
+        <img
+          src={mapBw}
+          alt=""
+          width={1024}
+          height={1536}
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-cover opacity-60 pointer-events-none"
+        />
+
+        {/* Drivers move with the map */}
+        <AnimatePresence>
+          {stage !== "trip" && drivers.map((d) => (
+            <motion.div
+              key={d.id}
+              className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ left: `${d.x}%`, top: `${d.y}%`, scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{
+                left:  { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
+                top:   { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
+                scale: { type: "spring", stiffness: 320, damping: 22 },
+                opacity: { duration: 0.28 },
+              }}
+            >
+              <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
+                <span className="absolute -inset-1 rounded-full bg-foreground/10 animate-ping" />
+                {d.type === "car" ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
+                    <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
+                  </svg>
+                )}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {(stage === "select" || stage === "matching" || stage === "trip") && (
+          <>
+            <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <motion.path
+                d="M 50 38 C 60 50, 35 60, 55 78"
+                stroke="currentColor"
+                strokeWidth="0.6"
+                strokeLinecap="round"
+                strokeDasharray="2 1.5"
+                fill="none"
+                className="text-foreground"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1.1, ease: "easeOut" }}
+              />
+            </svg>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.5, type: "spring", stiffness: 280, damping: 18 }}
+              className="absolute left-[55%] top-[78%] -translate-x-1/2 -translate-y-full"
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-foreground text-background">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" /></svg>
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {(stage === "matching" || stage === "trip") && (
+          <motion.div
+            initial={{ left: "30%", top: "60%" }}
+            animate={
+              stage === "trip"
+                ? { left: ["30%", "40%", "48%", "55%"], top: ["60%", "55%", "50%", "42%"] }
+                : { left: ["30%", "35%", "30%"], top: ["60%", "62%", "60%"] }
+            }
+            transition={{ duration: stage === "trip" ? 8 : 2.4, repeat: stage === "trip" ? 0 : Infinity, ease: "easeInOut" }}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
+                <circle cx="8" cy="17" r="1.5"/><circle cx="16" cy="17" r="1.5"/>
+              </svg>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Fixed overlays */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,var(--color-background)_85%)]" />
+
+      <div className="pointer-events-none absolute left-1/2 top-20 z-10 -translate-x-1/2 flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow ring-1 ring-border backdrop-blur">
         <span className="relative flex h-1.5 w-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -147,94 +341,26 @@ function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: Nearb
         Mapa ao vivo · {Math.round(refreshMs / 100) / 10}s
       </div>
 
-      <motion.div className="absolute left-1/2 top-[38%] -translate-x-1/2" initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+      {/* User pin — fixed at center */}
+      <div className="pointer-events-none absolute left-1/2 top-[38%] -translate-x-1/2 z-[6]">
         <div className="relative">
           <div className="absolute -inset-3 animate-ping rounded-full bg-foreground/20" />
           <div className="h-3.5 w-3.5 rounded-full bg-foreground ring-4 ring-background" />
         </div>
-      </motion.div>
+      </div>
 
-      <AnimatePresence>
-        {stage !== "trip" && drivers.map((d) => (
-          <motion.div
-            key={d.id}
-            className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ left: `${d.x}%`, top: `${d.y}%`, scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{
-              left:  { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
-              top:   { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
-              scale: { type: "spring", stiffness: 320, damping: 22 },
-              opacity: { duration: 0.28 },
-            }}
-          >
-            <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
-              <span className="absolute -inset-1 rounded-full bg-foreground/10 animate-ping" />
-              {d.type === "car" ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
-                  <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
-                </svg>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-
-
-      {(stage === "select" || stage === "matching" || stage === "trip") && (
-        <>
-          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <motion.path
-              d="M 50 38 C 60 50, 35 60, 55 78"
-              stroke="currentColor"
-              strokeWidth="0.6"
-              strokeLinecap="round"
-              strokeDasharray="2 1.5"
-              fill="none"
-              className="text-foreground"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 1.1, ease: "easeOut" }}
-            />
-          </svg>
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.5, type: "spring", stiffness: 280, damping: 18 }}
-            className="absolute left-[55%] top-[78%] -translate-x-1/2 -translate-y-full"
-          >
-            <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-foreground text-background">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" /></svg>
-            </div>
-          </motion.div>
-        </>
-      )}
-
-      {(stage === "matching" || stage === "trip") && (
-        <motion.div
-          initial={{ left: "30%", top: "60%" }}
-          animate={
-            stage === "trip"
-              ? { left: ["30%", "40%", "48%", "55%"], top: ["60%", "55%", "50%", "42%"] }
-              : { left: ["30%", "35%", "30%"], top: ["60%", "62%", "60%"] }
-          }
-          transition={{ duration: stage === "trip" ? 8 : 2.4, repeat: stage === "trip" ? 0 : Infinity, ease: "easeInOut" }}
-          className="absolute -translate-x-1/2 -translate-y-1/2"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
-              <circle cx="8" cy="17" r="1.5"/><circle cx="16" cy="17" r="1.5"/>
-            </svg>
-          </div>
-        </motion.div>
-      )}
+      {/* Map controls */}
+      <div className="absolute right-3 top-32 z-10 flex flex-col gap-1.5">
+        <button onClick={() => zoom(1.2)} aria-label="Aproximar" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-foreground shadow ring-1 ring-border">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button onClick={() => zoom(1/1.2)} aria-label="Afastar" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-foreground shadow ring-1 ring-border">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M5 12h14"/></svg>
+        </button>
+        <button onClick={resetView} aria-label="Centrar" className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-foreground shadow ring-1 ring-border">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </button>
+      </div>
     </div>
   );
 }
