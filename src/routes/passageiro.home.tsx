@@ -9,7 +9,7 @@ import {
 } from "@/lib/ryde-data";
 import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
 import { usePaymentMethod } from "@/lib/payments";
-import { useDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
+import { useDynamicPrice, computeDynamicPrice as _computeDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
 
 
 export const Route = createFileRoute("/passageiro/home")({
