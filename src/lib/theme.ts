@@ -4,8 +4,8 @@ export type Theme = "dark" | "light";
 const KEY = "ryde.theme";
 
 function read(): Theme {
-  if (typeof window === "undefined") return "dark";
-  return (window.localStorage.getItem(KEY) as Theme) ?? "dark";
+  if (typeof window === "undefined") return "light";
+  return (window.localStorage.getItem(KEY) as Theme) ?? "light";
 }
 
 function apply(t: Theme) {
