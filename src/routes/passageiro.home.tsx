@@ -614,7 +614,10 @@ function SelectSheet({
       <div className="mt-3 flex items-center gap-3 rounded-2xl bg-secondary p-3">
         <img src={driver.photo} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-border" />
         <div className="flex-1">
-          <div className="text-sm font-semibold">{driver.name}</div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            {driver.name}
+            <TrustBadge driver={driver} />
+          </div>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-foreground"><path d="m12 2 3 7 7 .6-5.3 4.7L18 22l-6-3.6L6 22l1.3-7.7L2 9.6 9 9z"/></svg>
             <span className="font-medium text-foreground">{driver.rating.toFixed(2)}</span>
