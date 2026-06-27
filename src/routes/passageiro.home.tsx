@@ -819,7 +819,7 @@ function PaymentRow() {
 }
 
 
-function MatchingSheet({ ride, onCancel }: { ride: Ride; onCancel: () => void }) {
+function MatchingSheet({ ride, onCancel, onChat }: { ride: Ride; onCancel: () => void; onChat: () => void }) {
   const label = ride.type === "moto" ? "motociclistas" : "motoristas";
   return (
     <div className="px-5 pb-7 pt-6 text-center">
@@ -832,9 +832,14 @@ function MatchingSheet({ ride, onCancel }: { ride: Ride; onCancel: () => void })
       <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
         Pedido enviado apenas a {label} disponíveis. {fmtKz(ride.priceKz)} · chega em {ride.eta}.
       </p>
-      <button onClick={onCancel} className="mt-5 w-full rounded-2xl bg-secondary py-3 text-sm font-medium">
-        Cancelar pedido
-      </button>
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        <button onClick={onChat} className="rounded-2xl bg-secondary py-3 text-sm font-medium">
+          Falar com motorista
+        </button>
+        <button onClick={onCancel} className="rounded-2xl bg-secondary py-3 text-sm font-medium">
+          Cancelar pedido
+        </button>
+      </div>
     </div>
   );
 }
