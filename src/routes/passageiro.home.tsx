@@ -569,8 +569,7 @@ function computeRowPricing(basePrice: number, keyHint: string) {
   return computeDynamicPriceMemo(basePrice, keyHint);
 }
 
-
-
+const _cache = new Map<string, ReturnType<typeof _computeDynamicPrice>>();
 function computeDynamicPriceMemo(basePrice: number, keyHint: string) {
   const k = `${basePrice}|${keyHint}`;
   let v = _cache.get(k);
