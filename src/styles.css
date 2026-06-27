@@ -109,21 +109,46 @@
 
   /* GPU-friendly micro-interactions on every tappable element */
   button, a, [role="button"], [data-tappable] {
-    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-                opacity 180ms ease,
-                background-color 180ms ease,
-                box-shadow 180ms ease,
-                color 180ms ease;
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 200ms ease,
+                background-color 200ms ease,
+                box-shadow 200ms ease,
+                color 200ms ease;
     will-change: transform;
     -webkit-tap-highlight-color: transparent;
   }
+  @media (hover: hover) {
+    button:hover, a:hover, [role="button"]:hover, [data-tappable]:hover {
+      background-color: #f0f0f0;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+    }
+    .dark button:hover, .dark a:hover, .dark [role="button"]:hover, .dark [data-tappable]:hover {
+      background-color: rgba(255,255,255,0.06);
+    }
+  }
   button:active, a:active, [role="button"]:active, [data-tappable]:active {
-    transform: scale(0.975);
-    opacity: 0.92;
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+                color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(0.97);
+    background-color: #1a1a1a;
+    color: #ffffff;
+    box-shadow: none;
+    animation: tap-bounce 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   button:disabled, button[aria-disabled="true"] {
     transform: none !important;
+    background-color: inherit;
+    color: inherit;
+    animation: none;
   }
+}
+
+@keyframes tap-bounce {
+  0%   { transform: scale(0.97); }
+  60%  { transform: scale(1.01); }
+  100% { transform: scale(1); }
 }
 
 @utility shadow-card { box-shadow: var(--shadow-card); }
