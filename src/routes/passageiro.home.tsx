@@ -937,3 +937,158 @@ function CancelModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (
     </motion.div>
   );
 }
+
+function TrustBadge({ driver }: { driver: Driver }) {
+  const meta = DRIVER_META[driver.type];
+  const trust: TrustResult = computeTrust({
+    rating: driver.rating,
+    trips: driver.trips,
+    joinedMonths: meta.joinedMonths,
+    cancelRate: meta.cancelRate,
+  });
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1"
+      style={{ background: trust.bg, color: trust.color, borderColor: trust.ring, boxShadow: "inset 0 0 0 1px " + trust.ring }}
+      title={`Confiança ${trust.score}/100`}
+    >
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.39 5.96L21 9l-5 4.6L17.5 21 12 17.7 6.5 21 8 13.6 3 9l6.61-1.04L12 2z"/></svg>
+      {trust.medal}
+      <span className="tabular-nums opacity-80">· {trust.score}</span>
+    </span>
+  );
+}
+
+function ChatOverlay({
+  driver, destination, onClose,
+}: { driver: Driver; destination: Suggestion; onClose: () => void }) {
+  const [messages, setMessages] = useState<{ id: string; from: "me" | "driver"; text: string; time: string }[]>([
+    { id: "m0", from: "driver", text: `Olá! Estou a caminho de ${destination.title.split(",")[0]}.`, time: nowHM() },
+  ]);
+  const [draft, setDraft] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  function send() {
+    const text = draft.trim();
+    if (!text) return;
+    const id = "m" + Date.now();
+    setMessages((m) => [...m, { id, from: "me", text, time: nowHM() }]);
+    setDraft("");
+    setTimeout(() => {
+      setMessages((m) => [...m, { id: id + "r", from: "driver", text: pickReply(text), time: nowHM() }]);
+    }, 900 + Math.random() * 700);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-[60] bg-background"
+    >
+      <motion.div
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 24, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 320, damping: 30 }}
+        className="flex h-full flex-col"
+      >
+        {/* Header */}
+        <div className="border-b border-border bg-card px-4 pt-5 pb-3">
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} aria-label="Fechar" className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+            <div className="relative">
+              <img src={driver.photo} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-border" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-card" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="truncate text-sm font-semibold">{driver.name}</div>
+              <div className="flex items-center gap-1 text-[11px] text-emerald-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Online
+              </div>
+            </div>
+            <a href="tel:+244923000000" aria-label="Ligar" className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z"/></svg>
+            </a>
+          </div>
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-secondary px-3 py-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Local solicitado</div>
+              <div className="truncate text-[13px] font-medium">{destination.title}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-4 pb-24">
+          <div className="space-y-2">
+            {messages.map((m) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.2 }}
+                className={m.from === "me" ? "flex justify-end" : "flex justify-start"}
+              >
+                <div
+                  className={
+                    m.from === "me"
+                      ? "max-w-[78%] rounded-2xl rounded-br-md bg-black px-3.5 py-2 text-sm text-white shadow-sm"
+                      : "max-w-[78%] rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2 text-sm text-foreground ring-1 ring-border"
+                  }
+                >
+                  <div>{m.text}</div>
+                  <div className={"mt-0.5 text-[10px] tabular-nums " + (m.from === "me" ? "text-white/60" : "text-muted-foreground")}>{m.time}</div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Composer */}
+        <div className="border-t border-border bg-card px-3 py-3 pb-5">
+          <div className="flex items-center gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+              placeholder="Escreva uma mensagem…"
+              className="flex-1 rounded-full bg-secondary px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <button
+              onClick={send}
+              disabled={!draft.trim()}
+              aria-label="Enviar"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white disabled:opacity-40"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function nowHM() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+const REPLIES = [
+  "Ok, estou a chegar!",
+  "Confirmado. Já saí.",
+  "Pode aguardar um minuto, por favor.",
+  "Estou no portão principal.",
+  "Obrigado pela informação!",
+];
+function pickReply(_t: string) {
+  return REPLIES[Math.floor(Math.random() * REPLIES.length)];
+}
