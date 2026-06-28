@@ -300,7 +300,7 @@ function MapCanvas({ stage }: { stage: Stage }) {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
         </span>
-        Mapa ao vivo · {Math.round(refreshMs / 100) / 10}s
+        Mapa ao vivo
       </div>
 
       {/* User pin — fixed at center */}
