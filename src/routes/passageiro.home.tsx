@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import mapBw from "@/assets/map-bw.jpg";
 import { BottomNav } from "@/components/BottomNav";
+import { SnapSheet, type Snap } from "@/components/SnapSheet";
 import {
   DRIVERS, fmtKz, RIDES, SUGGESTIONS,
   type Driver, type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
-import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
 import { usePaymentMethod } from "@/lib/payments";
 import { useDynamicPrice, computeDynamicPrice as _computeDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
 import { computeTrust, type TrustResult } from "@/lib/driver-trust";
