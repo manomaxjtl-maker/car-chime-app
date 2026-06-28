@@ -240,38 +240,7 @@ function MapCanvas({ stage }: { stage: Stage }) {
           className="absolute inset-0 h-full w-full object-cover opacity-60 pointer-events-none"
         />
 
-        {/* Drivers move with the map */}
-        <AnimatePresence>
-          {stage !== "trip" && drivers.map((d) => (
-            <motion.div
-              key={d.id}
-              className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ left: `${d.x}%`, top: `${d.y}%`, scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{
-                left:  { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
-                top:   { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
-                scale: { type: "spring", stiffness: 320, damping: 22 },
-                opacity: { duration: 0.28 },
-              }}
-            >
-              <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
-                <span className="absolute -inset-1 rounded-full bg-foreground/10 animate-ping" />
-                {d.type === "car" ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
-                    <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
-                  </svg>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
-                  </svg>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {/* Driver pins removed — nearby-drivers flow disabled */}
 
         {(stage === "select" || stage === "matching" || stage === "trip") && (
           <>
