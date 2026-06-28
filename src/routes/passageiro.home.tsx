@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import mapBw from "@/assets/map-bw.jpg";
 import { BottomNav } from "@/components/BottomNav";
+import { SnapSheet, type Snap } from "@/components/SnapSheet";
 import {
   DRIVERS, fmtKz, RIDES, SUGGESTIONS,
   type Driver, type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
-import { useNearbyDrivers, type NearbyDriver } from "@/lib/useNearbyDrivers";
 import { usePaymentMethod } from "@/lib/payments";
 import { useDynamicPrice, computeDynamicPrice as _computeDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
 import { computeTrust, type TrustResult } from "@/lib/driver-trust";
@@ -31,26 +31,20 @@ export const Route = createFileRoute("/passageiro/home")({
 
 type Stage = "home" | "search" | "select" | "matching" | "trip";
 
-const REFRESH_OPTIONS: { id: "slow" | "normal" | "fast"; label: string; ms: number }[] = [
-  { id: "slow",   label: "Lento",  ms: 4000 },
-  { id: "normal", label: "Normal", ms: 2200 },
-  { id: "fast",   label: "Rápido", ms: 1100 },
-];
-
 function RideApp() {
   const [stage, setStage] = useState<Stage>("home");
   const [destination, setDestination] = useState<Suggestion | null>(null);
   const [selected, setSelected] = useState<Ride>(RIDES[0]);
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const [refreshId, setRefreshId] = useState<"slow" | "normal" | "fast">("normal");
   const [chatOpen, setChatOpen] = useState(false);
-  const refreshMs = REFRESH_OPTIONS.find((o) => o.id === refreshId)!.ms;
-  const nearby = useNearbyDrivers(refreshMs);
-  const typeFilter: VehicleType | null =
-    stage === "select" || stage === "matching" || stage === "trip" ? selected.type : null;
-  const visibleDrivers = nearby.filter(
-    (d) => d.online && (typeFilter ? d.type === typeFilter : true),
-  );
+  const [snap, setSnap] = useState<Snap>("half");
+
+  // Reset snap on stage transitions so each new sheet starts at "half".
+  useEffect(() => {
+    if (stage === "select" || stage === "matching" || stage === "trip") {
+      setSnap("half");
+    }
+  }, [stage]);
 
   useEffect(() => {
     if (stage !== "matching") return;
@@ -68,21 +62,17 @@ function RideApp() {
 
   const canChat = stage === "matching" || stage === "trip";
   const chatDriver = canChat ? DRIVERS[selected.type] : null;
+  const usesSnap = stage === "select" || stage === "matching" || stage === "trip";
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
-      <MapCanvas stage={stage} drivers={visibleDrivers} refreshMs={refreshMs} />
+      <MapCanvas stage={stage} />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 
       <AnimatePresence mode="wait">
         {stage === "home" && (
           <Sheet key="home">
-            <HomeSheet
-              onSearch={() => setStage("search")}
-              drivers={visibleDrivers}
-              refreshId={refreshId}
-              onRefreshChange={setRefreshId}
-            />
+            <HomeSheet onSearch={() => setStage("search")} />
           </Sheet>
         )}
         {stage === "search" && (
@@ -93,25 +83,28 @@ function RideApp() {
             />
           </Sheet>
         )}
-        {stage === "select" && destination && (
-          <Sheet key="select">
-            <SelectSheet
-              destination={destination}
-              selected={selected}
-              onSelect={setSelected}
-              onConfirm={() => setStage("matching")}
-            />
-          </Sheet>
-        )}
-        {stage === "matching" && (
-          <Sheet key="matching"><MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} /></Sheet>
-        )}
-        {stage === "trip" && destination && (
-          <Sheet key="trip">
-            <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} onChat={() => setChatOpen(true)} />
-          </Sheet>
-        )}
       </AnimatePresence>
+
+      {usesSnap && stage === "select" && destination && (
+        <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setStage("home")}>
+          <SelectSheet
+            destination={destination}
+            selected={selected}
+            onSelect={setSelected}
+            onConfirm={() => setStage("matching")}
+          />
+        </SnapSheet>
+      )}
+      {usesSnap && stage === "matching" && (
+        <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setConfirmCancel(true)}>
+          <MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} />
+        </SnapSheet>
+      )}
+      {usesSnap && stage === "trip" && destination && (
+        <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setConfirmCancel(true)}>
+          <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} onChat={() => setChatOpen(true)} />
+        </SnapSheet>
+      )}
 
       <AnimatePresence>
         {confirmCancel && <CancelModal onClose={() => setConfirmCancel(false)} onConfirm={reset} />}
@@ -125,7 +118,7 @@ function RideApp() {
   );
 }
 
-function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: NearbyDriver[]; refreshMs: number }) {
+function MapCanvas({ stage }: { stage: Stage }) {
   // Pan + pinch-zoom state. Transform applies to the inner map layer only;
   // the user pin and live HUD stay fixed on top.
   const [t, setT] = useState({ x: 0, y: 0, scale: 1 });
@@ -247,38 +240,7 @@ function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: Nearb
           className="absolute inset-0 h-full w-full object-cover opacity-60 pointer-events-none"
         />
 
-        {/* Drivers move with the map */}
-        <AnimatePresence>
-          {stage !== "trip" && drivers.map((d) => (
-            <motion.div
-              key={d.id}
-              className="absolute z-[5] -translate-x-1/2 -translate-y-1/2"
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ left: `${d.x}%`, top: `${d.y}%`, scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{
-                left:  { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
-                top:   { type: "spring", stiffness: 38, damping: 20, mass: 1.1 },
-                scale: { type: "spring", stiffness: 320, damping: 22 },
-                opacity: { duration: 0.28 },
-              }}
-            >
-              <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-background text-foreground shadow ring-1 ring-border">
-                <span className="absolute -inset-1 rounded-full bg-foreground/10 animate-ping" />
-                {d.type === "car" ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 17h14l-1.5-6a2 2 0 0 0-2-1.5h-7a2 2 0 0 0-2 1.5L5 17Z"/>
-                    <circle cx="8" cy="17" r="1.4"/><circle cx="16" cy="17" r="1.4"/>
-                  </svg>
-                ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="5" cy="14" r="2.5"/><circle cx="19" cy="14" r="2.5"/><path d="M8 14h6l3-6h-3l-2-3h-3"/>
-                  </svg>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {/* Driver pins removed — nearby-drivers flow disabled */}
 
         {(stage === "select" || stage === "matching" || stage === "trip") && (
           <>
@@ -338,7 +300,7 @@ function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: Nearb
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
         </span>
-        Mapa ao vivo · {Math.round(refreshMs / 100) / 10}s
+        Mapa ao vivo
       </div>
 
       {/* User pin — fixed at center */}
@@ -420,16 +382,7 @@ function Sheet({
 }
 
 
-function HomeSheet({
-  onSearch, drivers, refreshId, onRefreshChange,
-}: {
-  onSearch: () => void;
-  drivers: NearbyDriver[];
-  refreshId: "slow" | "normal" | "fast";
-  onRefreshChange: (id: "slow" | "normal" | "fast") => void;
-}) {
-  const onlineCount = drivers.length;
-  const top = drivers.slice(0, 4);
+function HomeSheet({ onSearch }: { onSearch: () => void }) {
   return (
     <div className="px-5 pb-7 pt-5">
       <h1 className="text-[26px] font-semibold leading-tight tracking-tight">Para onde, hoje?</h1>
@@ -456,88 +409,6 @@ function HomeSheet({
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between">
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Motoristas perto de si</div>
-          <motion.div
-            key={onlineCount}
-            initial={{ scale: 0.85, opacity: 0.4 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 360, damping: 22 }}
-            className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground"
-          >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            {onlineCount} online
-          </motion.div>
-        </div>
-
-        <div className="mb-2 flex items-center gap-1 rounded-2xl bg-secondary p-1">
-          {REFRESH_OPTIONS.map((opt) => {
-            const active = opt.id === refreshId;
-            return (
-              <button
-                key={opt.id}
-                onClick={() => onRefreshChange(opt.id)}
-                className={`flex-1 rounded-xl py-1.5 text-[11px] font-medium transition ${active ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground"}`}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <ul className="space-y-1.5">
-          <AnimatePresence initial={false}>
-          {top.map((d) => (
-            <motion.li
-              key={d.id}
-              layout
-              initial={{ opacity: 0, y: 6, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              transition={{ type: "spring", stiffness: 300, damping: 26 }}
-              className="flex items-center gap-3 rounded-2xl bg-secondary px-3 py-2.5"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-[11px] font-semibold ring-1 ring-border">
-                {d.initials}
-              </span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  {d.name}
-                  <span className="rounded-md bg-background px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground ring-1 ring-border">
-                    {d.type === "moto" ? "Moto" : "Carro"}
-                  </span>
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {d.rating.toFixed(2)} ★ · {d.distanceKm.toFixed(1)} km
-                </div>
-              </div>
-              <div className="text-right">
-                <motion.div
-                  key={d.etaMin}
-                  initial={{ y: -4, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.25 }}
-                  className="text-sm font-semibold tabular-nums"
-                >
-                  {d.etaMin} min
-                </motion.div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">a chegar</div>
-              </div>
-            </motion.li>
-          ))}
-          </AnimatePresence>
-          {top.length === 0 && (
-            <li className="rounded-2xl bg-secondary px-3 py-4 text-center text-xs text-muted-foreground">
-              Nenhum motorista online por perto.
-            </li>
-          )}
-        </ul>
       </div>
     </div>
   );
