@@ -31,26 +31,20 @@ export const Route = createFileRoute("/passageiro/home")({
 
 type Stage = "home" | "search" | "select" | "matching" | "trip";
 
-const REFRESH_OPTIONS: { id: "slow" | "normal" | "fast"; label: string; ms: number }[] = [
-  { id: "slow",   label: "Lento",  ms: 4000 },
-  { id: "normal", label: "Normal", ms: 2200 },
-  { id: "fast",   label: "Rápido", ms: 1100 },
-];
-
 function RideApp() {
   const [stage, setStage] = useState<Stage>("home");
   const [destination, setDestination] = useState<Suggestion | null>(null);
   const [selected, setSelected] = useState<Ride>(RIDES[0]);
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const [refreshId, setRefreshId] = useState<"slow" | "normal" | "fast">("normal");
   const [chatOpen, setChatOpen] = useState(false);
-  const refreshMs = REFRESH_OPTIONS.find((o) => o.id === refreshId)!.ms;
-  const nearby = useNearbyDrivers(refreshMs);
-  const typeFilter: VehicleType | null =
-    stage === "select" || stage === "matching" || stage === "trip" ? selected.type : null;
-  const visibleDrivers = nearby.filter(
-    (d) => d.online && (typeFilter ? d.type === typeFilter : true),
-  );
+  const [snap, setSnap] = useState<Snap>("half");
+
+  // Reset snap on stage transitions so each new sheet starts at "half".
+  useEffect(() => {
+    if (stage === "select" || stage === "matching" || stage === "trip") {
+      setSnap("half");
+    }
+  }, [stage]);
 
   useEffect(() => {
     if (stage !== "matching") return;
@@ -68,21 +62,17 @@ function RideApp() {
 
   const canChat = stage === "matching" || stage === "trip";
   const chatDriver = canChat ? DRIVERS[selected.type] : null;
+  const usesSnap = stage === "select" || stage === "matching" || stage === "trip";
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
-      <MapCanvas stage={stage} drivers={visibleDrivers} refreshMs={refreshMs} />
+      <MapCanvas stage={stage} />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 
       <AnimatePresence mode="wait">
         {stage === "home" && (
           <Sheet key="home">
-            <HomeSheet
-              onSearch={() => setStage("search")}
-              drivers={visibleDrivers}
-              refreshId={refreshId}
-              onRefreshChange={setRefreshId}
-            />
+            <HomeSheet onSearch={() => setStage("search")} />
           </Sheet>
         )}
         {stage === "search" && (
@@ -93,25 +83,28 @@ function RideApp() {
             />
           </Sheet>
         )}
-        {stage === "select" && destination && (
-          <Sheet key="select">
-            <SelectSheet
-              destination={destination}
-              selected={selected}
-              onSelect={setSelected}
-              onConfirm={() => setStage("matching")}
-            />
-          </Sheet>
-        )}
-        {stage === "matching" && (
-          <Sheet key="matching"><MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} /></Sheet>
-        )}
-        {stage === "trip" && destination && (
-          <Sheet key="trip">
-            <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} onChat={() => setChatOpen(true)} />
-          </Sheet>
-        )}
       </AnimatePresence>
+
+      {usesSnap && stage === "select" && destination && (
+        <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setStage("home")}>
+          <SelectSheet
+            destination={destination}
+            selected={selected}
+            onSelect={setSelected}
+            onConfirm={() => setStage("matching")}
+          />
+        </SnapSheet>
+      )}
+      {usesSnap && stage === "matching" && (
+        <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setConfirmCancel(true)}>
+          <MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} />
+        </SnapSheet>
+      )}
+      {usesSnap && stage === "trip" && destination && (
+        <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setConfirmCancel(true)}>
+          <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} onChat={() => setChatOpen(true)} />
+        </SnapSheet>
+      )}
 
       <AnimatePresence>
         {confirmCancel && <CancelModal onClose={() => setConfirmCancel(false)} onConfirm={reset} />}
@@ -125,7 +118,7 @@ function RideApp() {
   );
 }
 
-function MapCanvas({ stage, drivers, refreshMs }: { stage: Stage; drivers: NearbyDriver[]; refreshMs: number }) {
+function MapCanvas({ stage }: { stage: Stage }) {
   // Pan + pinch-zoom state. Transform applies to the inner map layer only;
   // the user pin and live HUD stay fixed on top.
   const [t, setT] = useState({ x: 0, y: 0, scale: 1 });
