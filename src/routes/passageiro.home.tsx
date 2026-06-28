@@ -382,16 +382,7 @@ function Sheet({
 }
 
 
-function HomeSheet({
-  onSearch, drivers, refreshId, onRefreshChange,
-}: {
-  onSearch: () => void;
-  drivers: NearbyDriver[];
-  refreshId: "slow" | "normal" | "fast";
-  onRefreshChange: (id: "slow" | "normal" | "fast") => void;
-}) {
-  const onlineCount = drivers.length;
-  const top = drivers.slice(0, 4);
+function HomeSheet({ onSearch }: { onSearch: () => void }) {
   return (
     <div className="px-5 pb-7 pt-5">
       <h1 className="text-[26px] font-semibold leading-tight tracking-tight">Para onde, hoje?</h1>
@@ -418,88 +409,6 @@ function HomeSheet({
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between">
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Motoristas perto de si</div>
-          <motion.div
-            key={onlineCount}
-            initial={{ scale: 0.85, opacity: 0.4 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 360, damping: 22 }}
-            className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-foreground"
-          >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            {onlineCount} online
-          </motion.div>
-        </div>
-
-        <div className="mb-2 flex items-center gap-1 rounded-2xl bg-secondary p-1">
-          {REFRESH_OPTIONS.map((opt) => {
-            const active = opt.id === refreshId;
-            return (
-              <button
-                key={opt.id}
-                onClick={() => onRefreshChange(opt.id)}
-                className={`flex-1 rounded-xl py-1.5 text-[11px] font-medium transition ${active ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground"}`}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <ul className="space-y-1.5">
-          <AnimatePresence initial={false}>
-          {top.map((d) => (
-            <motion.li
-              key={d.id}
-              layout
-              initial={{ opacity: 0, y: 6, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              transition={{ type: "spring", stiffness: 300, damping: 26 }}
-              className="flex items-center gap-3 rounded-2xl bg-secondary px-3 py-2.5"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-[11px] font-semibold ring-1 ring-border">
-                {d.initials}
-              </span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  {d.name}
-                  <span className="rounded-md bg-background px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground ring-1 ring-border">
-                    {d.type === "moto" ? "Moto" : "Carro"}
-                  </span>
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {d.rating.toFixed(2)} ★ · {d.distanceKm.toFixed(1)} km
-                </div>
-              </div>
-              <div className="text-right">
-                <motion.div
-                  key={d.etaMin}
-                  initial={{ y: -4, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.25 }}
-                  className="text-sm font-semibold tabular-nums"
-                >
-                  {d.etaMin} min
-                </motion.div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">a chegar</div>
-              </div>
-            </motion.li>
-          ))}
-          </AnimatePresence>
-          {top.length === 0 && (
-            <li className="rounded-2xl bg-secondary px-3 py-4 text-center text-xs text-muted-foreground">
-              Nenhum motorista online por perto.
-            </li>
-          )}
-        </ul>
       </div>
     </div>
   );
