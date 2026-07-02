@@ -777,9 +777,10 @@ function MatchingSheet({ ride, agreedPrice, onCancel, onChat }: { ride: Ride; ag
 }
 
 function TripSheet({
-  ride, destination, onCancel, onFinish, onChat,
-}: { ride: Ride; destination: Suggestion; onCancel: () => void; onFinish: () => void; onChat: () => void }) {
+  ride, destination, agreedPrice, onCancel, onFinish, onChat,
+}: { ride: Ride; destination: Suggestion; agreedPrice: number | null; onCancel: () => void; onFinish: () => void; onChat: () => void }) {
   const d = DRIVERS[ride.type];
+  const shownPrice = agreedPrice ?? ride.priceKz;
   return (
     <div className="px-5 pb-6 pt-4">
       <div className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Chega em</div>
