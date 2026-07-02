@@ -491,16 +491,41 @@ function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onC
 
 function SelectSheet({
   destination, selected, onSelect, onConfirm,
-}: { destination: Suggestion; selected: Ride; onSelect: (r: Ride) => void; onConfirm: () => void }) {
+}: { destination: Suggestion; selected: Ride; onSelect: (r: Ride) => void; onConfirm: (finalPrice: number) => void }) {
   const [type, setType] = useState<VehicleType>(selected.type);
+  const [discount, setDiscount] = useState(0);
+  const [sending, setSending] = useState(false);
   const filtered = RIDES.filter((r) => r.type === type);
   const activeRide = filtered.some((r) => r.id === selected.id) ? selected : filtered[0];
   const driver = DRIVERS[type];
+  const pricing = computeRowPricing(activeRide.priceKz, destination.title + ":" + activeRide.id);
+  const basePrice = pricing.finalPrice;
+  const offerPrice = Math.round(basePrice * (1 - discount / 100));
 
   function switchType(t: VehicleType) {
     setType(t);
+    setDiscount(0);
     const next = RIDES.find((r) => r.type === t);
     if (next) onSelect(next);
+  }
+
+  function handleCta() {
+    if (discount === 0) {
+      onConfirm(basePrice);
+      return;
+    }
+    setSending(true);
+    // Simulate driver response
+    const accepts = Math.random() > 0.3;
+    setTimeout(() => {
+      setSending(false);
+      if (accepts) {
+        toast.success(`Oferta aceite · ${fmtKz(offerPrice)}`);
+        onConfirm(offerPrice);
+      } else {
+        toast.error("Motorista recusou a oferta");
+      }
+    }, 1500);
   }
 
   return (
