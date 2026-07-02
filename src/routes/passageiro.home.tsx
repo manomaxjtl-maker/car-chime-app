@@ -42,6 +42,9 @@ function RideApp() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [snap, setSnap] = useState<Snap>("half");
+  const [showArrived, setShowArrived] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [agreedPrice, setAgreedPrice] = useState<number | null>(null);
 
   // Reset snap on stage transitions so each new sheet starts at "half".
   useEffect(() => {
@@ -56,12 +59,26 @@ function RideApp() {
     return () => clearTimeout(t);
   }, [stage]);
 
+  // Show "driver arrived" notice ~2.5s into trip
+  useEffect(() => {
+    if (stage !== "trip") return;
+    const t = setTimeout(() => setShowArrived(true), 2500);
+    return () => clearTimeout(t);
+  }, [stage]);
+
   function reset() {
     setStage("home");
     setDestination(null);
     setSelected(RIDES[0]);
     setConfirmCancel(false);
     setChatOpen(false);
+    setShowArrived(false);
+    setShowRating(false);
+    setAgreedPrice(null);
+  }
+
+  function finishTrip() {
+    setShowRating(true);
   }
 
   const canChat = stage === "matching" || stage === "trip";
@@ -95,18 +112,18 @@ function RideApp() {
             destination={destination}
             selected={selected}
             onSelect={setSelected}
-            onConfirm={() => setStage("matching")}
+            onConfirm={(finalPrice) => { setAgreedPrice(finalPrice); setStage("matching"); }}
           />
         </SnapSheet>
       )}
       {usesSnap && stage === "matching" && (
         <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setConfirmCancel(true)}>
-          <MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} />
+          <MatchingSheet ride={selected} agreedPrice={agreedPrice} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} />
         </SnapSheet>
       )}
       {usesSnap && stage === "trip" && destination && (
         <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setConfirmCancel(true)}>
-          <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} onChat={() => setChatOpen(true)} />
+          <TripSheet ride={selected} destination={destination} agreedPrice={agreedPrice} onCancel={() => setConfirmCancel(true)} onFinish={finishTrip} onChat={() => setChatOpen(true)} />
         </SnapSheet>
       )}
 
@@ -115,7 +132,14 @@ function RideApp() {
         {chatOpen && chatDriver && destination && (
           <ChatOverlay driver={chatDriver} destination={destination} onClose={() => setChatOpen(false)} />
         )}
+        {showArrived && stage === "trip" && (
+          <DriverArrivedNotice key="arrived" onClose={() => setShowArrived(false)} />
+        )}
       </AnimatePresence>
+
+      {showRating && chatDriver && (
+        <RatingSheet driver={chatDriver} onClose={reset} />
+      )}
 
       <BottomNav variant="passageiro" />
     </main>
