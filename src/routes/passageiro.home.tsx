@@ -750,7 +750,8 @@ function PaymentRow() {
 }
 
 
-function MatchingSheet({ ride, onCancel, onChat }: { ride: Ride; onCancel: () => void; onChat: () => void }) {
+function MatchingSheet({ ride, agreedPrice, onCancel, onChat }: { ride: Ride; agreedPrice: number | null; onCancel: () => void; onChat: () => void }) {
+  const shownPrice = agreedPrice ?? ride.priceKz;
   const label = ride.type === "moto" ? "motociclistas" : "motoristas";
   return (
     <div className="px-5 pb-7 pt-6 text-center">
