@@ -762,7 +762,7 @@ function MatchingSheet({ ride, agreedPrice, onCancel, onChat }: { ride: Ride; ag
       <div className="mt-5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Procurando</div>
       <div className="mt-1 text-lg font-semibold">A encontrar um {ride.name} perto de si…</div>
       <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
-        Pedido enviado apenas a {label} disponíveis. {fmtKz(ride.priceKz)} · chega em {ride.eta}.
+        Pedido enviado apenas a {label} disponíveis. {fmtKz(shownPrice)} · chega em {ride.eta}.
       </p>
       <div className="mt-5 grid grid-cols-2 gap-2">
         <button onClick={onChat} className="rounded-2xl bg-secondary py-3 text-sm font-medium">
