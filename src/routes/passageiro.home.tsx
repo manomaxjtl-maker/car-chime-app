@@ -892,14 +892,25 @@ function TrustBadge({ driver }: { driver: Driver }) {
   );
 }
 
+type ChatMessage =
+  | { id: string; from: "me" | "driver"; kind: "text"; text: string; time: string }
+  | { id: string; from: "me" | "driver"; kind: "audio"; url: string; duration: number; time: string };
+
 function ChatOverlay({
   driver, destination, onClose,
 }: { driver: Driver; destination: Suggestion; onClose: () => void }) {
-  const [messages, setMessages] = useState<{ id: string; from: "me" | "driver"; text: string; time: string }[]>([
-    { id: "m0", from: "driver", text: `Olá! Estou a caminho de ${destination.title.split(",")[0]}.`, time: nowHM() },
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: "m0", from: "driver", kind: "text", text: `Olá! Estou a caminho de ${destination.title.split(",")[0]}.`, time: nowHM() },
   ]);
   const [draft, setDraft] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [recSecs, setRecSecs] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const startTimeRef = useRef(0);
+  const tickRef = useRef<number | null>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -909,12 +920,70 @@ function ChatOverlay({
     const text = draft.trim();
     if (!text) return;
     const id = "m" + Date.now();
-    setMessages((m) => [...m, { id, from: "me", text, time: nowHM() }]);
+    setMessages((m) => [...m, { id, from: "me", kind: "text", text, time: nowHM() }]);
     setDraft("");
     setTimeout(() => {
-      setMessages((m) => [...m, { id: id + "r", from: "driver", text: pickReply(text), time: nowHM() }]);
+      setMessages((m) => [...m, { id: id + "r", from: "driver", kind: "text", text: pickReply(text), time: nowHM() }]);
     }, 900 + Math.random() * 700);
   }
+
+  async function startRecording() {
+    if (recording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const rec = new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: chunksRef.current[0]?.type || "audio/webm" });
+        const url = URL.createObjectURL(blob);
+        const duration = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
+        const id = "a" + Date.now();
+        setMessages((m) => [...m, { id, from: "me", kind: "audio", url, duration, time: nowHM() }]);
+        setTimeout(() => {
+          setMessages((m) => [...m, { id: id + "r", from: "driver", kind: "text", text: "Recebido, obrigado!", time: nowHM() }]);
+        }, 900);
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      };
+      rec.start();
+      recRef.current = rec;
+      startTimeRef.current = Date.now();
+      setRecording(true);
+      setRecSecs(0);
+      tickRef.current = window.setInterval(() => {
+        const s = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setRecSecs(s);
+        if (s >= 60) stopRecording();
+      }, 200);
+    } catch {
+      toast.error("Não foi possível aceder ao microfone");
+    }
+  }
+
+  function stopRecording() {
+    if (!recording) return;
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+    try { recRef.current?.stop(); } catch { /* noop */ }
+    recRef.current = null;
+    setRecording(false);
+  }
+
+  function cancelRecording() {
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+    if (recRef.current) {
+      recRef.current.onstop = null;
+      try { recRef.current.stop(); } catch { /* noop */ }
+      recRef.current = null;
+    }
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setRecording(false);
+    setRecSecs(0);
+  }
+
+  useEffect(() => () => cancelRecording(), []);
 
   return (
     <motion.div
@@ -977,7 +1046,11 @@ function ChatOverlay({
                       : "max-w-[78%] rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2 text-sm text-foreground ring-1 ring-border"
                   }
                 >
-                  <div>{m.text}</div>
+                  {m.kind === "text" ? (
+                    <div>{m.text}</div>
+                  ) : (
+                    <AudioBubble url={m.url} duration={m.duration} mine={m.from === "me"} />
+                  )}
                   <div className={"mt-0.5 text-[10px] tabular-nums " + (m.from === "me" ? "text-white/60" : "text-muted-foreground")}>{m.time}</div>
                 </div>
               </motion.div>
@@ -987,26 +1060,142 @@ function ChatOverlay({
 
         {/* Composer */}
         <div className="border-t border-border bg-card px-3 py-3 pb-5">
-          <div className="flex items-center gap-2">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-              placeholder="Escreva uma mensagem…"
-              className="flex-1 rounded-full bg-secondary px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
-            />
-            <button
-              onClick={send}
-              disabled={!draft.trim()}
-              aria-label="Enviar"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white disabled:opacity-40"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
-            </button>
-          </div>
+          {recording ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={cancelRecording}
+                aria-label="Cancelar"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-foreground"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+              <div className="flex flex-1 items-center gap-3 rounded-full bg-secondary px-4 py-2.5">
+                <Waveform />
+                <div className="text-[12px] font-semibold tabular-nums text-foreground">
+                  {fmtSecs(recSecs)} / 1:00
+                </div>
+              </div>
+              <button
+                onClick={stopRecording}
+                aria-label="Enviar áudio"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+                placeholder="Escreva uma mensagem…"
+                className="flex-1 rounded-full bg-secondary px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+              />
+              {draft.trim() ? (
+                <button
+                  onClick={send}
+                  aria-label="Enviar"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
+                </button>
+              ) : (
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); startRecording(); }}
+                  onPointerUp={stopRecording}
+                  onPointerLeave={() => { if (recording) stopRecording(); }}
+                  aria-label="Gravar áudio"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function fmtSecs(s: number) {
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+function Waveform() {
+  const [seed, setSeed] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setSeed((x) => x + 1), 90);
+    return () => clearInterval(id);
+  }, []);
+  const bars = 22;
+  return (
+    <div className="flex h-6 flex-1 items-center gap-[3px]">
+      {Array.from({ length: bars }).map((_, i) => {
+        const h = 20 + Math.abs(Math.sin((seed + i) * 0.9) * 60) + Math.random() * 20;
+        return (
+          <span
+            key={i}
+            className="w-[3px] rounded-full bg-black"
+            style={{ height: `${Math.min(100, h)}%` }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function AudioBubble({ url, duration, mine }: { url: string; duration: number; mine: boolean }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const a = new Audio(url);
+    audioRef.current = a;
+    a.addEventListener("timeupdate", () => {
+      const d = a.duration || duration;
+      setCurrent(a.currentTime);
+      setProgress(Math.min(1, a.currentTime / d));
+    });
+    a.addEventListener("ended", () => { setPlaying(false); setProgress(1); });
+    return () => { a.pause(); audioRef.current = null; };
+  }, [url, duration]);
+
+  function toggle() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing) { a.pause(); setPlaying(false); }
+    else { a.play(); setPlaying(true); }
+  }
+
+  const barBg = mine ? "bg-white/25" : "bg-foreground/20";
+  const fillBg = mine ? "bg-white" : "bg-foreground";
+  const timeText = mine ? "text-white/70" : "text-muted-foreground";
+  const shown = playing || progress > 0 ? current : duration;
+
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <button
+        onClick={toggle}
+        aria-label={playing ? "Pausar" : "Reproduzir"}
+        className={"flex h-8 w-8 items-center justify-center rounded-full " + (mine ? "bg-white text-black" : "bg-black text-white")}
+      >
+        {playing ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        )}
+      </button>
+      <div className={"relative h-1 w-32 rounded-full " + barBg}>
+        <div className={"absolute inset-y-0 left-0 rounded-full " + fillBg} style={{ width: `${progress * 100}%` }} />
+      </div>
+      <div className={"text-[11px] font-medium tabular-nums " + timeText}>{fmtSecs(Math.round(shown))}</div>
+    </div>
   );
 }
 
