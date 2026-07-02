@@ -826,7 +826,7 @@ function TripSheet({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm font-semibold tabular-nums">{fmtKz(ride.priceKz)}</div>
+          <div className="text-sm font-semibold tabular-nums">{fmtKz(shownPrice)}</div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">total</div>
         </div>
       </div>
