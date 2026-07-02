@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 import mapBw from "@/assets/map-bw.jpg";
 import { BottomNav } from "@/components/BottomNav";
 import { SnapSheet, type Snap } from "@/components/SnapSheet";
+import { PriceNegotiation } from "@/components/PriceNegotiation";
+import { RatingSheet } from "@/components/RatingSheet";
+import { DriverArrivedNotice } from "@/components/DriverArrivedNotice";
 import {
   DRIVERS, fmtKz, RIDES, SUGGESTIONS,
   type Driver, type Ride, type Suggestion, type VehicleType,
