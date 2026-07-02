@@ -614,14 +614,21 @@ function SelectSheet({
 
       <SurgePanel basePrice={activeRide.priceKz} keyHint={destination.title + ":" + activeRide.id} />
 
+      <PriceNegotiation originalPrice={basePrice} discount={discount} onChange={setDiscount} />
+
       <PaymentRow />
 
 
       <button
-        onClick={onConfirm}
-        className="mt-3 w-full rounded-2xl bg-foreground py-4 text-[15px] font-semibold text-background transition active:scale-[0.99]"
+        onClick={handleCta}
+        disabled={sending}
+        className="mt-3 w-full rounded-2xl bg-foreground py-4 text-[15px] font-semibold text-background transition active:scale-[0.99] disabled:opacity-60"
       >
-        Confirmar {activeRide.name} · {fmtKz(computeRowPricing(activeRide.priceKz, destination.title + ":" + activeRide.id).finalPrice)}
+        {sending
+          ? "A enviar oferta…"
+          : discount > 0
+            ? `Enviar oferta · ${fmtKz(offerPrice)}`
+            : `Solicitar corrida · ${fmtKz(basePrice)}`}
       </button>
 
       <div className="mt-2 text-center text-[10.5px] text-muted-foreground">
