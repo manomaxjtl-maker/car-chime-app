@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "sonner";
 import mapBw from "@/assets/map-bw.jpg";
 import { BottomNav } from "@/components/BottomNav";
 import { SnapSheet, type Snap } from "@/components/SnapSheet";
+import { PriceNegotiation } from "@/components/PriceNegotiation";
+import { RatingSheet } from "@/components/RatingSheet";
+import { DriverArrivedNotice } from "@/components/DriverArrivedNotice";
 import {
   DRIVERS, fmtKz, RIDES, SUGGESTIONS,
   type Driver, type Ride, type Suggestion, type VehicleType,
@@ -38,6 +42,9 @@ function RideApp() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [snap, setSnap] = useState<Snap>("half");
+  const [showArrived, setShowArrived] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [agreedPrice, setAgreedPrice] = useState<number | null>(null);
 
   // Reset snap on stage transitions so each new sheet starts at "half".
   useEffect(() => {
@@ -52,12 +59,26 @@ function RideApp() {
     return () => clearTimeout(t);
   }, [stage]);
 
+  // Show "driver arrived" notice ~2.5s into trip
+  useEffect(() => {
+    if (stage !== "trip") return;
+    const t = setTimeout(() => setShowArrived(true), 2500);
+    return () => clearTimeout(t);
+  }, [stage]);
+
   function reset() {
     setStage("home");
     setDestination(null);
     setSelected(RIDES[0]);
     setConfirmCancel(false);
     setChatOpen(false);
+    setShowArrived(false);
+    setShowRating(false);
+    setAgreedPrice(null);
+  }
+
+  function finishTrip() {
+    setShowRating(true);
   }
 
   const canChat = stage === "matching" || stage === "trip";
@@ -91,18 +112,18 @@ function RideApp() {
             destination={destination}
             selected={selected}
             onSelect={setSelected}
-            onConfirm={() => setStage("matching")}
+            onConfirm={(finalPrice) => { setAgreedPrice(finalPrice); setStage("matching"); }}
           />
         </SnapSheet>
       )}
       {usesSnap && stage === "matching" && (
         <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setConfirmCancel(true)}>
-          <MatchingSheet ride={selected} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} />
+          <MatchingSheet ride={selected} agreedPrice={agreedPrice} onCancel={() => setConfirmCancel(true)} onChat={() => setChatOpen(true)} />
         </SnapSheet>
       )}
       {usesSnap && stage === "trip" && destination && (
         <SnapSheet snap={snap} onSnapChange={setSnap} onClose={() => setConfirmCancel(true)}>
-          <TripSheet ride={selected} destination={destination} onCancel={() => setConfirmCancel(true)} onFinish={reset} onChat={() => setChatOpen(true)} />
+          <TripSheet ride={selected} destination={destination} agreedPrice={agreedPrice} onCancel={() => setConfirmCancel(true)} onFinish={finishTrip} onChat={() => setChatOpen(true)} />
         </SnapSheet>
       )}
 
@@ -111,7 +132,14 @@ function RideApp() {
         {chatOpen && chatDriver && destination && (
           <ChatOverlay driver={chatDriver} destination={destination} onClose={() => setChatOpen(false)} />
         )}
+        {showArrived && stage === "trip" && (
+          <DriverArrivedNotice key="arrived" onClose={() => setShowArrived(false)} />
+        )}
       </AnimatePresence>
+
+      {showRating && chatDriver && (
+        <RatingSheet driver={chatDriver} onClose={reset} />
+      )}
 
       <BottomNav variant="passageiro" />
     </main>
@@ -463,16 +491,41 @@ function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onC
 
 function SelectSheet({
   destination, selected, onSelect, onConfirm,
-}: { destination: Suggestion; selected: Ride; onSelect: (r: Ride) => void; onConfirm: () => void }) {
+}: { destination: Suggestion; selected: Ride; onSelect: (r: Ride) => void; onConfirm: (finalPrice: number) => void }) {
   const [type, setType] = useState<VehicleType>(selected.type);
+  const [discount, setDiscount] = useState(0);
+  const [sending, setSending] = useState(false);
   const filtered = RIDES.filter((r) => r.type === type);
   const activeRide = filtered.some((r) => r.id === selected.id) ? selected : filtered[0];
   const driver = DRIVERS[type];
+  const pricing = computeRowPricing(activeRide.priceKz, destination.title + ":" + activeRide.id);
+  const basePrice = pricing.finalPrice;
+  const offerPrice = Math.round(basePrice * (1 - discount / 100));
 
   function switchType(t: VehicleType) {
     setType(t);
+    setDiscount(0);
     const next = RIDES.find((r) => r.type === t);
     if (next) onSelect(next);
+  }
+
+  function handleCta() {
+    if (discount === 0) {
+      onConfirm(basePrice);
+      return;
+    }
+    setSending(true);
+    // Simulate driver response
+    const accepts = Math.random() > 0.3;
+    setTimeout(() => {
+      setSending(false);
+      if (accepts) {
+        toast.success(`Oferta aceite · ${fmtKz(offerPrice)}`);
+        onConfirm(offerPrice);
+      } else {
+        toast.error("Motorista recusou a oferta");
+      }
+    }, 1500);
   }
 
   return (
@@ -561,14 +614,21 @@ function SelectSheet({
 
       <SurgePanel basePrice={activeRide.priceKz} keyHint={destination.title + ":" + activeRide.id} />
 
+      <PriceNegotiation originalPrice={basePrice} discount={discount} onChange={setDiscount} />
+
       <PaymentRow />
 
 
       <button
-        onClick={onConfirm}
-        className="mt-3 w-full rounded-2xl bg-foreground py-4 text-[15px] font-semibold text-background transition active:scale-[0.99]"
+        onClick={handleCta}
+        disabled={sending}
+        className="mt-3 w-full rounded-2xl bg-foreground py-4 text-[15px] font-semibold text-background transition active:scale-[0.99] disabled:opacity-60"
       >
-        Confirmar {activeRide.name} · {fmtKz(computeRowPricing(activeRide.priceKz, destination.title + ":" + activeRide.id).finalPrice)}
+        {sending
+          ? "A enviar oferta…"
+          : discount > 0
+            ? `Enviar oferta · ${fmtKz(offerPrice)}`
+            : `Solicitar corrida · ${fmtKz(basePrice)}`}
       </button>
 
       <div className="mt-2 text-center text-[10.5px] text-muted-foreground">
@@ -690,7 +750,8 @@ function PaymentRow() {
 }
 
 
-function MatchingSheet({ ride, onCancel, onChat }: { ride: Ride; onCancel: () => void; onChat: () => void }) {
+function MatchingSheet({ ride, agreedPrice, onCancel, onChat }: { ride: Ride; agreedPrice: number | null; onCancel: () => void; onChat: () => void }) {
+  const shownPrice = agreedPrice ?? ride.priceKz;
   const label = ride.type === "moto" ? "motociclistas" : "motoristas";
   return (
     <div className="px-5 pb-7 pt-6 text-center">
@@ -701,7 +762,7 @@ function MatchingSheet({ ride, onCancel, onChat }: { ride: Ride; onCancel: () =>
       <div className="mt-5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Procurando</div>
       <div className="mt-1 text-lg font-semibold">A encontrar um {ride.name} perto de si…</div>
       <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
-        Pedido enviado apenas a {label} disponíveis. {fmtKz(ride.priceKz)} · chega em {ride.eta}.
+        Pedido enviado apenas a {label} disponíveis. {fmtKz(shownPrice)} · chega em {ride.eta}.
       </p>
       <div className="mt-5 grid grid-cols-2 gap-2">
         <button onClick={onChat} className="rounded-2xl bg-secondary py-3 text-sm font-medium">
@@ -716,9 +777,10 @@ function MatchingSheet({ ride, onCancel, onChat }: { ride: Ride; onCancel: () =>
 }
 
 function TripSheet({
-  ride, destination, onCancel, onFinish, onChat,
-}: { ride: Ride; destination: Suggestion; onCancel: () => void; onFinish: () => void; onChat: () => void }) {
+  ride, destination, agreedPrice, onCancel, onFinish, onChat,
+}: { ride: Ride; destination: Suggestion; agreedPrice: number | null; onCancel: () => void; onFinish: () => void; onChat: () => void }) {
   const d = DRIVERS[ride.type];
+  const shownPrice = agreedPrice ?? ride.priceKz;
   return (
     <div className="px-5 pb-6 pt-4">
       <div className="text-center text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Chega em</div>
@@ -764,7 +826,7 @@ function TripSheet({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm font-semibold tabular-nums">{fmtKz(ride.priceKz)}</div>
+          <div className="text-sm font-semibold tabular-nums">{fmtKz(shownPrice)}</div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">total</div>
         </div>
       </div>
@@ -830,14 +892,25 @@ function TrustBadge({ driver }: { driver: Driver }) {
   );
 }
 
+type ChatMessage =
+  | { id: string; from: "me" | "driver"; kind: "text"; text: string; time: string }
+  | { id: string; from: "me" | "driver"; kind: "audio"; url: string; duration: number; time: string };
+
 function ChatOverlay({
   driver, destination, onClose,
 }: { driver: Driver; destination: Suggestion; onClose: () => void }) {
-  const [messages, setMessages] = useState<{ id: string; from: "me" | "driver"; text: string; time: string }[]>([
-    { id: "m0", from: "driver", text: `Olá! Estou a caminho de ${destination.title.split(",")[0]}.`, time: nowHM() },
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: "m0", from: "driver", kind: "text", text: `Olá! Estou a caminho de ${destination.title.split(",")[0]}.`, time: nowHM() },
   ]);
   const [draft, setDraft] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [recSecs, setRecSecs] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const startTimeRef = useRef(0);
+  const tickRef = useRef<number | null>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -847,12 +920,70 @@ function ChatOverlay({
     const text = draft.trim();
     if (!text) return;
     const id = "m" + Date.now();
-    setMessages((m) => [...m, { id, from: "me", text, time: nowHM() }]);
+    setMessages((m) => [...m, { id, from: "me", kind: "text", text, time: nowHM() }]);
     setDraft("");
     setTimeout(() => {
-      setMessages((m) => [...m, { id: id + "r", from: "driver", text: pickReply(text), time: nowHM() }]);
+      setMessages((m) => [...m, { id: id + "r", from: "driver", kind: "text", text: pickReply(text), time: nowHM() }]);
     }, 900 + Math.random() * 700);
   }
+
+  async function startRecording() {
+    if (recording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const rec = new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: chunksRef.current[0]?.type || "audio/webm" });
+        const url = URL.createObjectURL(blob);
+        const duration = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
+        const id = "a" + Date.now();
+        setMessages((m) => [...m, { id, from: "me", kind: "audio", url, duration, time: nowHM() }]);
+        setTimeout(() => {
+          setMessages((m) => [...m, { id: id + "r", from: "driver", kind: "text", text: "Recebido, obrigado!", time: nowHM() }]);
+        }, 900);
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      };
+      rec.start();
+      recRef.current = rec;
+      startTimeRef.current = Date.now();
+      setRecording(true);
+      setRecSecs(0);
+      tickRef.current = window.setInterval(() => {
+        const s = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setRecSecs(s);
+        if (s >= 60) stopRecording();
+      }, 200);
+    } catch {
+      toast.error("Não foi possível aceder ao microfone");
+    }
+  }
+
+  function stopRecording() {
+    if (!recording) return;
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+    try { recRef.current?.stop(); } catch { /* noop */ }
+    recRef.current = null;
+    setRecording(false);
+  }
+
+  function cancelRecording() {
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+    if (recRef.current) {
+      recRef.current.onstop = null;
+      try { recRef.current.stop(); } catch { /* noop */ }
+      recRef.current = null;
+    }
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setRecording(false);
+    setRecSecs(0);
+  }
+
+  useEffect(() => () => cancelRecording(), []);
 
   return (
     <motion.div
@@ -915,7 +1046,11 @@ function ChatOverlay({
                       : "max-w-[78%] rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2 text-sm text-foreground ring-1 ring-border"
                   }
                 >
-                  <div>{m.text}</div>
+                  {m.kind === "text" ? (
+                    <div>{m.text}</div>
+                  ) : (
+                    <AudioBubble url={m.url} duration={m.duration} mine={m.from === "me"} />
+                  )}
                   <div className={"mt-0.5 text-[10px] tabular-nums " + (m.from === "me" ? "text-white/60" : "text-muted-foreground")}>{m.time}</div>
                 </div>
               </motion.div>
@@ -925,26 +1060,142 @@ function ChatOverlay({
 
         {/* Composer */}
         <div className="border-t border-border bg-card px-3 py-3 pb-5">
-          <div className="flex items-center gap-2">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-              placeholder="Escreva uma mensagem…"
-              className="flex-1 rounded-full bg-secondary px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
-            />
-            <button
-              onClick={send}
-              disabled={!draft.trim()}
-              aria-label="Enviar"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white disabled:opacity-40"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
-            </button>
-          </div>
+          {recording ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={cancelRecording}
+                aria-label="Cancelar"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-foreground"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+              <div className="flex flex-1 items-center gap-3 rounded-full bg-secondary px-4 py-2.5">
+                <Waveform />
+                <div className="text-[12px] font-semibold tabular-nums text-foreground">
+                  {fmtSecs(recSecs)} / 1:00
+                </div>
+              </div>
+              <button
+                onClick={stopRecording}
+                aria-label="Enviar áudio"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+                placeholder="Escreva uma mensagem…"
+                className="flex-1 rounded-full bg-secondary px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
+              />
+              {draft.trim() ? (
+                <button
+                  onClick={send}
+                  aria-label="Enviar"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/></svg>
+                </button>
+              ) : (
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); startRecording(); }}
+                  onPointerUp={stopRecording}
+                  onPointerLeave={() => { if (recording) stopRecording(); }}
+                  aria-label="Gravar áudio"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function fmtSecs(s: number) {
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+function Waveform() {
+  const [seed, setSeed] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setSeed((x) => x + 1), 90);
+    return () => clearInterval(id);
+  }, []);
+  const bars = 22;
+  return (
+    <div className="flex h-6 flex-1 items-center gap-[3px]">
+      {Array.from({ length: bars }).map((_, i) => {
+        const h = 20 + Math.abs(Math.sin((seed + i) * 0.9) * 60) + Math.random() * 20;
+        return (
+          <span
+            key={i}
+            className="w-[3px] rounded-full bg-black"
+            style={{ height: `${Math.min(100, h)}%` }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function AudioBubble({ url, duration, mine }: { url: string; duration: number; mine: boolean }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const a = new Audio(url);
+    audioRef.current = a;
+    a.addEventListener("timeupdate", () => {
+      const d = a.duration || duration;
+      setCurrent(a.currentTime);
+      setProgress(Math.min(1, a.currentTime / d));
+    });
+    a.addEventListener("ended", () => { setPlaying(false); setProgress(1); });
+    return () => { a.pause(); audioRef.current = null; };
+  }, [url, duration]);
+
+  function toggle() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing) { a.pause(); setPlaying(false); }
+    else { a.play(); setPlaying(true); }
+  }
+
+  const barBg = mine ? "bg-white/25" : "bg-foreground/20";
+  const fillBg = mine ? "bg-white" : "bg-foreground";
+  const timeText = mine ? "text-white/70" : "text-muted-foreground";
+  const shown = playing || progress > 0 ? current : duration;
+
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <button
+        onClick={toggle}
+        aria-label={playing ? "Pausar" : "Reproduzir"}
+        className={"flex h-8 w-8 items-center justify-center rounded-full " + (mine ? "bg-white text-black" : "bg-black text-white")}
+      >
+        {playing ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        )}
+      </button>
+      <div className={"relative h-1 w-32 rounded-full " + barBg}>
+        <div className={"absolute inset-y-0 left-0 rounded-full " + fillBg} style={{ width: `${progress * 100}%` }} />
+      </div>
+      <div className={"text-[11px] font-medium tabular-nums " + timeText}>{fmtSecs(Math.round(shown))}</div>
+    </div>
   );
 }
 
