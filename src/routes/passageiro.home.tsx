@@ -395,7 +395,7 @@ function Sheet({
         if (onDismiss && (info.offset.y > 110 || info.velocity.y > 600)) onDismiss();
       }}
       className={[
-        "absolute inset-x-0 bottom-16 z-30 rounded-t-3xl bg-card ring-1 ring-border",
+        "absolute inset-x-0 bottom-0 z-30 rounded-t-3xl bg-card ring-1 ring-border",
         full ? "top-0 bottom-0 rounded-none" : "",
         peek ? "top-[40%]" : "",
         dismissible ? "touch-none" : "",
