@@ -86,7 +86,7 @@ function RideApp() {
   const usesSnap = stage === "select" || stage === "matching" || stage === "trip";
 
   return (
-    <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
+    <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background">
       <MapCanvas stage={stage} />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 

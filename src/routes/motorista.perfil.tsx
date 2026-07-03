@@ -22,7 +22,7 @@ function PerfilMotorista() {
   }
 
   return (
-    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background pb-28">
+    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background">
       <header className="px-5 pt-8">
         <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Motorista</div>
         <h1 className="mt-1 text-2xl font-semibold">Perfil</h1>

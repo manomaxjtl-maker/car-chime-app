@@ -49,7 +49,7 @@ function PerfilPage() {
   ];
 
   return (
-    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-white pb-28">
+    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-white">
       {/* Hero */}
       <section
         className="relative flex flex-col items-center bg-black px-7 pt-10 pb-7 text-white"

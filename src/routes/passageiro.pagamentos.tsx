@@ -28,7 +28,7 @@ function PagamentosPage() {
   const { theme, toggle } = useTheme();
 
   return (
-    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background pb-28">
+    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background">
       <motion.header
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
