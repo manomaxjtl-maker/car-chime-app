@@ -20,7 +20,7 @@ export function SnapSheet({
   onSnapChange,
   onClose,
   children,
-  bottomOffset = 64,
+  bottomOffset = 0,
 }: {
   snap: Snap;
   onSnapChange: (s: Snap) => void;
