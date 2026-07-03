@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import mapBw from "@/assets/map-bw.jpg";
 import sPressoAsset from "@/assets/s-presso.jpg.asset.json";
+import motoAsset from "@/assets/moto_transparente.png.asset.json";
 import { SnapSheet, type Snap } from "@/components/SnapSheet";
 import { PriceNegotiation } from "@/components/PriceNegotiation";
 import { RatingSheet } from "@/components/RatingSheet";
@@ -87,7 +88,7 @@ function RideApp() {
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background">
-      <MapCanvas stage={stage} />
+      <div className="absolute inset-0 bg-[#f0f0f0]" aria-hidden />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 
       <AnimatePresence mode="wait">
@@ -568,45 +569,47 @@ function SelectSheet({
         })}
       </div>
 
-      {type === "car" && (
-        <div className="mt-3 -mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex gap-2.5 pb-1">
-            {filtered.map((r) => {
-              const active = r.id === activeRide.id;
-              const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => onSelect(r)}
-                  className="flex shrink-0 flex-col overflow-hidden rounded-2xl bg-card p-2 text-left transition"
-                  style={{
-                    width: 140,
-                    height: 150,
-                    border: active ? "2px solid #000" : "2px solid transparent",
-                    background: active ? "#EEEEEE" : "#ffffff",
-                  }}
+      <div className="mt-3 -mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2.5 pb-1">
+          {filtered.map((r) => {
+            const active = r.id === activeRide.id;
+            const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
+            const imgSrc = r.type === "moto" ? motoAsset.url : sPressoAsset.url;
+            return (
+              <button
+                key={r.id}
+                onClick={() => onSelect(r)}
+                className="flex shrink-0 flex-col overflow-hidden rounded-2xl p-2 text-left transition"
+                style={{
+                  width: 140,
+                  height: 158,
+                  border: active ? "2px solid #000" : "2px solid transparent",
+                  background: active ? "#EEEEEE" : "#ffffff",
+                  boxShadow: "0 1px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.03)",
+                }}
+              >
+                <div
+                  className="flex items-center justify-center overflow-hidden rounded-2xl"
+                  style={{ background: "#F5F5F5", height: "68%" }}
                 >
-                  <div
-                    className="flex items-center justify-center overflow-hidden rounded-2xl"
-                    style={{ background: "#F5F5F5", height: "70%" }}
-                  >
-                    <img
-                      src={sPressoAsset.url}
-                      alt={r.name}
-                      className="h-full w-full object-contain"
-                      style={{ mixBlendMode: "multiply" }}
-                    />
-                  </div>
-                  <div className="mt-1.5 px-1">
-                    <div className="text-[13px] font-bold leading-tight text-[#1a1a1a]">{r.name}</div>
-                    <div className="text-[12px] tabular-nums text-black">{fmtKz(rowPricing.finalPrice)}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  <img
+                    src={imgSrc}
+                    alt={r.name}
+                    className="h-full w-full object-contain p-1"
+                    style={{ mixBlendMode: "multiply" }}
+                  />
+                </div>
+                <div className="mt-1.5 px-1 text-center">
+                  <div className="text-[13px] font-bold leading-tight text-[#1a1a1a]">{r.name}</div>
+                  <div className="text-[12px] tabular-nums text-black">{fmtKz(rowPricing.finalPrice)} · {r.eta}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-      )}
+      </div>
+
+
 
 
       <div className="mt-3 max-h-[28dvh] overflow-y-auto -mx-1 px-1">
