@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BottomNav } from "@/components/BottomNav";
 import { fmtKz, TRIP_HISTORY } from "@/lib/ryde-data";
 
 export const Route = createFileRoute("/passageiro/historico")({
@@ -11,7 +10,7 @@ export const Route = createFileRoute("/passageiro/historico")({
 function HistoricoPage() {
   const total = TRIP_HISTORY.reduce((s, t) => s + t.priceKz, 0);
   return (
-    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background pb-28">
+    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background">
       <header className="px-5 pt-8">
         <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Passageiro</div>
         <h1 className="mt-1 text-2xl font-semibold">As suas viagens</h1>
@@ -48,7 +47,6 @@ function HistoricoPage() {
         ))}
       </ul>
 
-      <BottomNav variant="passageiro" />
     </main>
   );
 }

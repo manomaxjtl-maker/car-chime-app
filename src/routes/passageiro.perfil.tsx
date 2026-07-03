@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { BottomNav } from "@/components/BottomNav";
 import { clearUser, getUser } from "@/lib/auth";
 import { useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/auth";
@@ -50,7 +49,7 @@ function PerfilPage() {
   ];
 
   return (
-    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-white pb-28">
+    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-white">
       {/* Hero */}
       <section
         className="relative flex flex-col items-center bg-black px-7 pt-10 pb-7 text-white"
@@ -126,7 +125,6 @@ function PerfilPage() {
         </motion.button>
       </section>
 
-      <BottomNav variant="passageiro" />
     </main>
   );
 }

@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BottomNav } from "@/components/BottomNav";
 import { EARNINGS, fmtKz, PENDING_REQUESTS, type RideRequest } from "@/lib/ryde-data";
 
 export const Route = createFileRoute("/motorista/dashboard")({
@@ -34,7 +33,7 @@ function DashboardPage() {
   }
 
   return (
-    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background pb-28">
+    <main className="mx-auto min-h-[100dvh] w-full max-w-md bg-background">
       <header className="flex items-center justify-between px-5 pt-8">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Motorista</div>
@@ -133,7 +132,6 @@ function DashboardPage() {
         </div>
       )}
 
-      <BottomNav variant="motorista" />
     </main>
   );
 }

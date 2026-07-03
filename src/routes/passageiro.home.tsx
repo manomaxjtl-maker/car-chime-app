@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import mapBw from "@/assets/map-bw.jpg";
-import { BottomNav } from "@/components/BottomNav";
+import sPressoAsset from "@/assets/s-presso.jpg.asset.json";
 import { SnapSheet, type Snap } from "@/components/SnapSheet";
 import { PriceNegotiation } from "@/components/PriceNegotiation";
 import { RatingSheet } from "@/components/RatingSheet";
@@ -86,7 +86,7 @@ function RideApp() {
   const usesSnap = stage === "select" || stage === "matching" || stage === "trip";
 
   return (
-    <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background pb-16">
+    <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background">
       <MapCanvas stage={stage} />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 
@@ -141,7 +141,6 @@ function RideApp() {
         <RatingSheet driver={chatDriver} onClose={reset} />
       )}
 
-      <BottomNav variant="passageiro" />
     </main>
   );
 }
@@ -396,7 +395,7 @@ function Sheet({
         if (onDismiss && (info.offset.y > 110 || info.velocity.y > 600)) onDismiss();
       }}
       className={[
-        "absolute inset-x-0 bottom-16 z-30 rounded-t-3xl bg-card ring-1 ring-border",
+        "absolute inset-x-0 bottom-0 z-30 rounded-t-3xl bg-card ring-1 ring-border",
         full ? "top-0 bottom-0 rounded-none" : "",
         peek ? "top-[40%]" : "",
         dismissible ? "touch-none" : "",
@@ -568,6 +567,47 @@ function SelectSheet({
           );
         })}
       </div>
+
+      {type === "car" && (
+        <div className="mt-3 -mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2.5 pb-1">
+            {filtered.map((r) => {
+              const active = r.id === activeRide.id;
+              const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => onSelect(r)}
+                  className="flex shrink-0 flex-col overflow-hidden rounded-2xl bg-card p-2 text-left transition"
+                  style={{
+                    width: 140,
+                    height: 150,
+                    border: active ? "2px solid #000" : "2px solid transparent",
+                    background: active ? "#EEEEEE" : "#ffffff",
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center overflow-hidden rounded-2xl"
+                    style={{ background: "#F5F5F5", height: "70%" }}
+                  >
+                    <img
+                      src={sPressoAsset.url}
+                      alt={r.name}
+                      className="h-full w-full object-contain"
+                      style={{ mixBlendMode: "multiply" }}
+                    />
+                  </div>
+                  <div className="mt-1.5 px-1">
+                    <div className="text-[13px] font-bold leading-tight text-[#1a1a1a]">{r.name}</div>
+                    <div className="text-[12px] tabular-nums text-black">{fmtKz(rowPricing.finalPrice)}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       <div className="mt-3 max-h-[28dvh] overflow-y-auto -mx-1 px-1">
         {filtered.map((r) => {
