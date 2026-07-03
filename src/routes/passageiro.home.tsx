@@ -88,7 +88,7 @@ function RideApp() {
 
   return (
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-background">
-      <MapCanvas stage={stage} />
+      <div className="absolute inset-0 bg-[#f0f0f0]" aria-hidden />
       <TopBar stage={stage} onBack={() => (stage === "home" ? null : stage === "trip" || stage === "matching" ? setConfirmCancel(true) : setStage("home"))} />
 
       <AnimatePresence mode="wait">
