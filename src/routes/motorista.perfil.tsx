@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BottomNav } from "@/components/BottomNav";
 import { clearUser, getUser, type SessionUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/motorista/perfil")({
@@ -58,7 +57,6 @@ function PerfilMotorista() {
         {tab === "cadastro" && <Cadastro />}
       </div>
 
-      <BottomNav variant="motorista" />
     </main>
   );
 }

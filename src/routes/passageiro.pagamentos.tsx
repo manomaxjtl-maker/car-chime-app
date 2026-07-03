@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { BottomNav } from "@/components/BottomNav";
 import { fmtKz, TRIP_HISTORY } from "@/lib/ryde-data";
 import { PAYMENT_METHODS, usePaymentMethod, type PaymentMethod } from "@/lib/payments";
 import { useTheme } from "@/lib/theme";
@@ -132,7 +131,6 @@ function PagamentosPage() {
         </button>
       </div>
 
-      <BottomNav variant="passageiro" />
     </main>
   );
 }

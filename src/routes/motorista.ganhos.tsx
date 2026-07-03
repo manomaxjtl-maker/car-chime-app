@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BottomNav } from "@/components/BottomNav";
 import { EARNINGS, fmtKz } from "@/lib/ryde-data";
 
 export const Route = createFileRoute("/motorista/ganhos")({
@@ -44,7 +43,6 @@ function GanhosPage() {
         ))}
       </ul>
 
-      <BottomNav variant="motorista" />
     </main>
   );
 }

@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BottomNav } from "@/components/BottomNav";
 import { fmtKz, TRIP_HISTORY } from "@/lib/ryde-data";
 
 export const Route = createFileRoute("/motorista/historico")({
@@ -48,7 +47,6 @@ function HistoricoMotorista() {
         ))}
       </ul>
 
-      <BottomNav variant="motorista" />
     </main>
   );
 }

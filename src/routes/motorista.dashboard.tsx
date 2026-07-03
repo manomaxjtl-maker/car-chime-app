@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BottomNav } from "@/components/BottomNav";
 import { EARNINGS, fmtKz, PENDING_REQUESTS, type RideRequest } from "@/lib/ryde-data";
 
 export const Route = createFileRoute("/motorista/dashboard")({
@@ -133,7 +132,6 @@ function DashboardPage() {
         </div>
       )}
 
-      <BottomNav variant="motorista" />
     </main>
   );
 }

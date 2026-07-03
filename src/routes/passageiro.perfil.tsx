@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { BottomNav } from "@/components/BottomNav";
 import { clearUser, getUser } from "@/lib/auth";
 import { useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/auth";
@@ -126,7 +125,6 @@ function PerfilPage() {
         </motion.button>
       </section>
 
-      <BottomNav variant="passageiro" />
     </main>
   );
 }

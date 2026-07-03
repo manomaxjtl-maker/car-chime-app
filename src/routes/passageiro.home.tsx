@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import mapBw from "@/assets/map-bw.jpg";
-import { BottomNav } from "@/components/BottomNav";
 import { SnapSheet, type Snap } from "@/components/SnapSheet";
 import { PriceNegotiation } from "@/components/PriceNegotiation";
 import { RatingSheet } from "@/components/RatingSheet";
@@ -141,7 +140,6 @@ function RideApp() {
         <RatingSheet driver={chatDriver} onClose={reset} />
       )}
 
-      <BottomNav variant="passageiro" />
     </main>
   );
 }
