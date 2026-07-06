@@ -10,17 +10,18 @@ export const Route = createFileRoute("/passageiro/pagamentos")({
   component: PagamentosPage,
 });
 
-function MethodIcon({ kind }: { kind: PaymentMethod["icon"] }) {
-  if (kind === "card") return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
-  );
-  if (kind === "cash") return (
+function MethodIcon({ method }: { method: PaymentMethod }) {
+  if (method.logo) {
+    return <img src={method.logo} alt={method.label} className="h-full w-full rounded-lg object-cover" />;
+  }
+  if (method.icon === "cash") return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
   );
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 21V5a2 2 0 0 1 2-2h5a4 4 0 0 1 0 8H7"/></svg>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
   );
 }
+
 
 function PagamentosPage() {
   const total = TRIP_HISTORY.reduce((s, t) => s + t.priceKz, 0);
@@ -68,7 +69,7 @@ function PagamentosPage() {
                   className={`flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left ring-1 ${active ? "ring-foreground" : "ring-border"}`}
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
-                    <MethodIcon kind={m.icon} />
+                    <MethodIcon method={m} />
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-semibold">{m.label}</div>
