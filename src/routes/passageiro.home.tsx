@@ -446,78 +446,98 @@ function HomeSheet({ onSearch }: { onSearch: () => void }) {
 }
 
 
-function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onClose: () => void }) {
-  const recents = SUGGESTIONS.slice(0, 4);
+function SearchSheet({ onConfirm, onShowMap }: { onConfirm: (s: Suggestion) => void; onShowMap: () => void }) {
+  const [origem, setOrigem] = useState("24, Ocean avenue");
+  const [destino, setDestino] = useState("");
+  const [focus, setFocus] = useState<"origem" | "destino">("destino");
+
+  const query = (focus === "origem" ? origem : destino).trim().toLowerCase();
+  const suggestions = query.length === 0
+    ? SUGGESTIONS.slice(0, 5)
+    : SUGGESTIONS.filter((s) =>
+        s.title.toLowerCase().includes(query) || s.subtitle.toLowerCase().includes(query)
+      );
+
+  const canConfirm = origem.trim().length > 0 && destino.trim().length > 0;
+
+  function pickSuggestion(s: Suggestion) {
+    if (focus === "origem") {
+      setOrigem(s.title);
+      setFocus("destino");
+    } else {
+      setDestino(s.title);
+    }
+  }
+
+  function handleConfirm() {
+    if (!canConfirm) return;
+    const match = SUGGESTIONS.find((s) => s.title.toLowerCase() === destino.trim().toLowerCase());
+    onConfirm(match ?? { title: destino.trim(), subtitle: origem.trim(), eta: "—" });
+  }
+
   return (
     <div className="flex h-full flex-col bg-[#F4F6FA]">
       {/* Header */}
-      <div className="relative flex items-center justify-center px-4 pb-3 pt-5">
-        <button
-          onClick={onClose}
-          className="absolute left-4 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm"
-          aria-label="Voltar"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
+      <div className="relative flex items-center justify-center px-4 pb-3 pt-1">
         <h2 className="text-[15px] font-bold text-[#111]">Select Ride</h2>
       </div>
 
-      {/* Mini map */}
-      <div className="relative mx-4 h-[22%] overflow-hidden rounded-2xl bg-[#E8EEF6] shadow-sm">
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 100" preserveAspectRatio="none">
-          <g stroke="#D6DEE8" strokeWidth="0.6" fill="none">
-            <path d="M-10 30 L210 20" />
-            <path d="M-10 60 L210 45" />
-            <path d="M-10 85 L210 75" />
-            <path d="M30 -10 L50 110" />
-            <path d="M90 -10 L110 110" />
-            <path d="M150 -10 L170 110" />
-          </g>
-        </svg>
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="relative">
-            <div className="absolute -inset-2 animate-ping rounded-full bg-[#2563EB]/25" />
-            <div className="h-3.5 w-3.5 rounded-full bg-[#2563EB] ring-4 ring-white" />
-          </div>
-        </div>
-      </div>
-
-      {/* Address card */}
-      <div className="mx-4 mt-4 rounded-2xl bg-white p-4 shadow-sm">
+      {/* Address card with editable inputs */}
+      <div className="mx-4 mt-2 rounded-2xl bg-white p-4 shadow-sm">
         <div className="flex items-start gap-3">
-          <div className="mt-1.5 flex flex-col items-center">
+          <div className="mt-3 flex flex-col items-center">
             <div className="h-2.5 w-2.5 rounded-full bg-[#2563EB]" />
-            <div className="my-1 h-6 w-px bg-[#E4E7EC]" />
+            <div className="my-1 h-8 w-px bg-[#E4E7EC]" />
             <div className="h-2.5 w-2.5 rounded-full bg-[#111]" />
           </div>
-          <div className="flex-1 space-y-2.5">
-            <div>
+          <div className="flex-1 space-y-1">
+            <label className="block">
               <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A94A6]">Origem</div>
-              <div className="text-[14px] font-semibold text-[#111]">24, Ocean avenue</div>
-            </div>
+              <input
+                type="text"
+                value={origem}
+                onChange={(e) => setOrigem(e.target.value)}
+                onFocus={() => setFocus("origem")}
+                placeholder="Ponto de partida"
+                className="w-full bg-transparent text-[14px] font-semibold text-[#111] outline-none placeholder:text-[#B6BEC9]"
+              />
+            </label>
             <div className="h-px bg-[#F0F2F6]" />
-            <div>
+            <label className="block">
               <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A94A6]">Destino</div>
-              <div className="text-[14px] font-semibold text-[#111]">Kings Cross Urban Village</div>
-            </div>
+              <input
+                type="text"
+                value={destino}
+                onChange={(e) => setDestino(e.target.value)}
+                onFocus={() => setFocus("destino")}
+                placeholder="Para onde vai?"
+                autoFocus
+                className="w-full bg-transparent text-[14px] font-semibold text-[#111] outline-none placeholder:text-[#B6BEC9]"
+              />
+            </label>
           </div>
         </div>
 
         <div className="mt-3 h-px bg-[#F0F2F6]" />
 
-        <button className="mt-1 flex w-full items-center gap-2 py-2 text-left">
+        <button onClick={onShowMap} className="mt-1 flex w-full items-center gap-2 py-2 text-left">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
-          <span className="flex-1 text-[13px] font-semibold text-[#2563EB]">Show on a map</span>
+          <span className="flex-1 text-[13px] font-semibold text-[#2563EB]">Mostrar em um mapa</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6"/></svg>
         </button>
       </div>
 
-      {/* Recent */}
-      <div className="mt-5 px-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">Recent</div>
-      <ul className="mt-2 flex-1 overflow-y-auto px-4">
-        {recents.map((s, i) => (
+      {/* Suggestions */}
+      <div className="mt-4 px-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">
+        {query.length === 0 ? "Recent" : "Sugestões"}
+      </div>
+      <ul className="mt-1 flex-1 overflow-y-auto px-4">
+        {suggestions.length === 0 && (
+          <li className="px-2 py-6 text-center text-[13px] text-[#8A94A6]">Sem sugestões</li>
+        )}
+        {suggestions.map((s, i) => (
           <li key={s.title} className={i > 0 ? "border-t border-[#EBEEF3]" : ""}>
-            <button onClick={() => onPick(s)} className="flex w-full items-center gap-3 py-3 text-left">
+            <button onClick={() => pickSuggestion(s)} className="flex w-full items-center gap-3 py-3 text-left">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDF1F7] text-[#8A94A6]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
               </span>
@@ -529,9 +549,24 @@ function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onC
           </li>
         ))}
       </ul>
+
+      {/* Confirmar destino */}
+      <div className="border-t border-[#EBEEF3] bg-[#F4F6FA] px-4 pb-6 pt-3">
+        <button
+          onClick={handleConfirm}
+          disabled={!canConfirm}
+          className={[
+            "flex h-12 w-full items-center justify-center rounded-2xl text-[14px] font-semibold transition",
+            canConfirm ? "bg-[#111] text-white active:scale-[0.99]" : "bg-[#D6DBE3] text-[#8A94A6]",
+          ].join(" ")}
+        >
+          Confirmar destino
+        </button>
+      </div>
     </div>
   );
 }
+
 
 
 function SelectSheet({
