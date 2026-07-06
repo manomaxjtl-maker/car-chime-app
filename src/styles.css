@@ -120,8 +120,8 @@
   }
   @media (hover: hover) {
     button:hover, a:hover, [role="button"]:hover, [data-tappable]:hover {
-      background-color: #f0f0f0;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+      background-color: #EEF2FF;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.12);
     }
     .dark button:hover, .dark a:hover, .dark [role="button"]:hover, .dark [data-tappable]:hover {
       background-color: rgba(255,255,255,0.06);
@@ -133,11 +133,12 @@
                 color 150ms cubic-bezier(0.4, 0, 0.2, 1),
                 box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
     transform: scale(0.97);
-    background-color: #1a1a1a;
+    background-color: #2563EB;
     color: #ffffff;
     box-shadow: none;
     animation: tap-bounce 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
+
   button:disabled, button[aria-disabled="true"] {
     transform: none !important;
     background-color: inherit;
