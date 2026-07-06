@@ -50,10 +50,11 @@ function RideApp() {
 
   // Reset snap on stage transitions so each new sheet starts at "half".
   useEffect(() => {
-    if (stage === "select" || stage === "matching" || stage === "trip") {
+    if (stage === "search" || stage === "select" || stage === "matching" || stage === "trip") {
       setSnap("half");
     }
   }, [stage]);
+
 
   useEffect(() => {
     if (stage !== "matching") return;
