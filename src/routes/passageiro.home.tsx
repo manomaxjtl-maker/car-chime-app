@@ -14,7 +14,7 @@ import {
   DRIVERS, fmtKz, RIDES, SUGGESTIONS,
   type Driver, type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
-import { usePaymentMethod } from "@/lib/payments";
+import { usePaymentMethod, PAYMENT_METHODS } from "@/lib/payments";
 import { useDynamicPrice, computeDynamicPrice as _computeDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
 import { computeTrust, type TrustResult } from "@/lib/driver-trust";
 
