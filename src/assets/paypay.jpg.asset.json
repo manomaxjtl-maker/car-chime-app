@@ -1,11 +1,11 @@
 {
-  "version": 1,
   "asset_id": "452cc6aa-7bba-460a-95d1-2250f3da26ca",
-  "project_id": "b7319256-485a-4b9b-8055-3bdcc0df73c8",
-  "url": "/__l5e/assets-v1/452cc6aa-7bba-460a-95d1-2250f3da26ca/paypay.jpg",
-  "r2_key": "a/v1/b7319256-485a-4b9b-8055-3bdcc0df73c8/452cc6aa-7bba-460a-95d1-2250f3da26ca/paypay.jpg",
-  "original_filename": "paypay.jpg",
-  "size": 50607,
   "content_type": "image/jpeg",
-  "created_at": "2026-07-06T13:46:20Z"
+  "created_at": "2026-07-06T13:46:20Z",
+  "original_filename": "paypay.jpg",
+  "project_id": "4f9a70c6-a617-45bd-8a67-9904e8ad6dd7",
+  "r2_key": "a/v1/4f9a70c6-a617-45bd-8a67-9904e8ad6dd7/452cc6aa-7bba-460a-95d1-2250f3da26ca/paypay.jpg",
+  "size": 50607,
+  "url": "/__l5e/assets-v1/452cc6aa-7bba-460a-95d1-2250f3da26ca/paypay.jpg",
+  "version": 1
 }
