@@ -67,9 +67,10 @@ function PagamentosPage() {
                   onClick={() => setMethod(m.id)}
                   className={`flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left ring-1 ${active ? "ring-foreground" : "ring-border"}`}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
-                    <MethodIcon kind={m.icon} />
+                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg ring-1 ring-border">
+                    <img src={m.logo} alt="" className="h-full w-full object-cover" />
                   </div>
+
                   <div className="flex-1">
                     <div className="text-sm font-semibold">{m.label}</div>
                     <div className="text-xs text-muted-foreground">{m.hint}</div>
