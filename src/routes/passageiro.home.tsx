@@ -762,36 +762,78 @@ function SurgePanel({ basePrice, keyHint }: { basePrice: number; keyHint: string
 }
 
 function PaymentRow() {
-  const { method, cycle } = usePaymentMethod();
-  const iconFor = (k: string) => {
-    if (k === "card") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>;
-    if (k === "cash") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>;
-    return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 21V5a2 2 0 0 1 2-2h5a4 4 0 0 1 0 8H7"/></svg>;
+  const { method, setMethod } = usePaymentMethod();
+  const [open, setOpen] = useState(false);
+  const iconFor = (m: { logo?: string; icon: string; label: string }) => {
+    if (m.logo) return <img src={m.logo} alt={m.label} className="h-9 w-9 rounded-lg object-cover" />;
+    if (m.icon === "cash") return (
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-foreground">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+      </div>
+    );
+    return (
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-foreground">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
+      </div>
+    );
   };
   return (
-    <div className="mt-3 flex items-center justify-between gap-3 overflow-hidden rounded-2xl bg-secondary px-4 py-3">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={method.id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="flex min-w-0 items-center gap-2"
+    <div className="mt-3 rounded-2xl bg-secondary px-3 py-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={method.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="flex min-w-0 items-center gap-2.5"
+          >
+            {iconFor(method)}
+            <span className="truncate text-sm font-medium">{method.label}</span>
+          </motion.div>
+        </AnimatePresence>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="shrink-0 rounded-full bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-primary ring-1 ring-border"
         >
-          {iconFor(method.icon)}
-          <span className="truncate text-sm font-medium">{method.label}</span>
-        </motion.div>
+          Trocar
+        </button>
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.ul
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-2 space-y-1 overflow-hidden"
+          >
+            {PAYMENT_METHODS.map((m) => {
+              const active = m.id === method.id;
+              return (
+                <li key={m.id}>
+                  <button
+                    onClick={() => { setMethod(m.id); setOpen(false); }}
+                    className={`flex w-full items-center gap-2.5 rounded-xl bg-background px-2.5 py-2 text-left ring-1 ${active ? "ring-primary" : "ring-border"}`}
+                  >
+                    {iconFor(m)}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold truncate">{m.label}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{m.hint}</div>
+                    </div>
+                    {active && <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Selecionado</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </motion.ul>
+        )}
       </AnimatePresence>
-      <button
-        onClick={cycle}
-        className="shrink-0 rounded-full bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border"
-      >
-        Trocar
-      </button>
     </div>
   );
 }
+
 
 
 function MatchingSheet({ ride, agreedPrice, onCancel, onChat }: { ride: Ride; agreedPrice: number | null; onCancel: () => void; onChat: () => void }) {
