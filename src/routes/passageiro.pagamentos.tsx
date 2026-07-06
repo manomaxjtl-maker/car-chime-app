@@ -69,7 +69,7 @@ function PagamentosPage() {
                   className={`flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left ring-1 ${active ? "ring-foreground" : "ring-border"}`}
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary">
-                    <MethodIcon kind={m.icon} />
+                    <MethodIcon method={m} />
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-semibold">{m.label}</div>
