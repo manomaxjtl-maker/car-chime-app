@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
+import expressLogo from "@/assets/express.jpg.asset.json";
+import paypayLogo from "@/assets/paypay.jpg.asset.json";
 
 export type PaymentMethod = {
   id: string;
   label: string;
   hint: string;
   icon: "card" | "cash" | "paypay";
+  logo: string;
 };
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
-  { id: "mcx",    label: "Multicaixa Express", hint: "•••• 8821",             icon: "card" },
-  { id: "cash",   label: "Dinheiro em mão",    hint: "Pagar no destino",      icon: "cash" },
-  { id: "paypay", label: "Pay Pay",            hint: "Carteira digital",      icon: "paypay" },
+  { id: "mcx",    label: "Multicaixa Express", hint: "•••• 8821",        icon: "card",   logo: expressLogo.url },
+  { id: "paypay", label: "PayPay",             hint: "Carteira digital", icon: "paypay", logo: paypayLogo.url },
 ];
 
 const KEY = "ryde.payment";
@@ -18,7 +20,9 @@ const listeners = new Set<(id: string) => void>();
 
 function read(): string {
   if (typeof window === "undefined") return PAYMENT_METHODS[0].id;
-  return window.localStorage.getItem(KEY) ?? PAYMENT_METHODS[0].id;
+  const stored = window.localStorage.getItem(KEY);
+  if (stored && PAYMENT_METHODS.some((m) => m.id === stored)) return stored;
+  return PAYMENT_METHODS[0].id;
 }
 
 export function setPaymentMethod(id: string) {

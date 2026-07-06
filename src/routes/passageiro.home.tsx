@@ -14,7 +14,7 @@ import {
   DRIVERS, fmtKz, RIDES, SUGGESTIONS,
   type Driver, type Ride, type Suggestion, type VehicleType,
 } from "@/lib/ryde-data";
-import { usePaymentMethod } from "@/lib/payments";
+import { usePaymentMethod, PAYMENT_METHODS } from "@/lib/payments";
 import { useDynamicPrice, computeDynamicPrice as _computeDynamicPrice, type PricingFactor } from "@/lib/dynamic-pricing";
 import { computeTrust, type TrustResult } from "@/lib/driver-trust";
 
@@ -445,50 +445,92 @@ function HomeSheet({ onSearch }: { onSearch: () => void }) {
 
 
 function SearchSheet({ onPick, onClose }: { onPick: (s: Suggestion) => void; onClose: () => void }) {
-  const [q, setQ] = useState("");
-  const list = SUGGESTIONS.filter((s) => s.title.toLowerCase().includes(q.toLowerCase()));
+  const recents = SUGGESTIONS.slice(0, 4);
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-border px-4 pt-6 pb-4">
-        <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary" aria-label="Fechar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    <div className="flex h-full flex-col bg-[#F4F6FA]">
+      {/* Header */}
+      <div className="relative flex items-center justify-center px-4 pb-3 pt-5">
+        <button
+          onClick={onClose}
+          className="absolute left-4 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm"
+          aria-label="Voltar"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
-        <div className="flex-1">
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Destino</div>
-          <div className="mt-1 flex items-center gap-2">
-            <div className="flex flex-col items-center pt-1">
-              <div className="h-2 w-2 rounded-full bg-foreground" />
-              <div className="my-1 h-4 w-px bg-border" />
-              <div className="h-2 w-2 rounded-sm bg-foreground" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <input className="w-full bg-transparent text-sm font-medium outline-none" defaultValue="Localização atual" readOnly />
-              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Para onde?" className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground" />
-            </div>
+        <h2 className="text-[15px] font-bold text-[#111]">Select Ride</h2>
+      </div>
+
+      {/* Mini map */}
+      <div className="relative mx-4 h-[22%] overflow-hidden rounded-2xl bg-[#E8EEF6] shadow-sm">
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 200 100" preserveAspectRatio="none">
+          <g stroke="#D6DEE8" strokeWidth="0.6" fill="none">
+            <path d="M-10 30 L210 20" />
+            <path d="M-10 60 L210 45" />
+            <path d="M-10 85 L210 75" />
+            <path d="M30 -10 L50 110" />
+            <path d="M90 -10 L110 110" />
+            <path d="M150 -10 L170 110" />
+          </g>
+        </svg>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="relative">
+            <div className="absolute -inset-2 animate-ping rounded-full bg-[#2563EB]/25" />
+            <div className="h-3.5 w-3.5 rounded-full bg-[#2563EB] ring-4 ring-white" />
           </div>
         </div>
       </div>
 
-      <ul className="flex-1 overflow-y-auto px-2 py-2">
-        {list.map((s) => (
-          <li key={s.title}>
-            <button onClick={() => onPick(s)} className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left transition hover:bg-secondary">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground">
+      {/* Address card */}
+      <div className="mx-4 mt-4 rounded-2xl bg-white p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="mt-1.5 flex flex-col items-center">
+            <div className="h-2.5 w-2.5 rounded-full bg-[#2563EB]" />
+            <div className="my-1 h-6 w-px bg-[#E4E7EC]" />
+            <div className="h-2.5 w-2.5 rounded-full bg-[#111]" />
+          </div>
+          <div className="flex-1 space-y-2.5">
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A94A6]">Origem</div>
+              <div className="text-[14px] font-semibold text-[#111]">24, Ocean avenue</div>
+            </div>
+            <div className="h-px bg-[#F0F2F6]" />
+            <div>
+              <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#8A94A6]">Destino</div>
+              <div className="text-[14px] font-semibold text-[#111]">Kings Cross Urban Village</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 h-px bg-[#F0F2F6]" />
+
+        <button className="mt-1 flex w-full items-center gap-2 py-2 text-left">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          <span className="flex-1 text-[13px] font-semibold text-[#2563EB]">Show on a map</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      {/* Recent */}
+      <div className="mt-5 px-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8A94A6]">Recent</div>
+      <ul className="mt-2 flex-1 overflow-y-auto px-4">
+        {recents.map((s, i) => (
+          <li key={s.title} className={i > 0 ? "border-t border-[#EBEEF3]" : ""}>
+            <button onClick={() => onPick(s)} className="flex w-full items-center gap-3 py-3 text-left">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EDF1F7] text-[#8A94A6]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
               </span>
-              <span className="flex-1">
-                <span className="block text-sm font-medium">{s.title}</span>
-                <span className="block text-xs text-muted-foreground">{s.subtitle}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block truncate text-[14px] font-bold text-[#111]">{s.title}</span>
+                <span className="block truncate text-[12px] text-[#8A94A6]">{s.subtitle}</span>
               </span>
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{s.eta}</span>
             </button>
           </li>
         ))}
-        {list.length === 0 && <li className="px-5 py-12 text-center text-sm text-muted-foreground">Nenhum resultado.</li>}
       </ul>
     </div>
   );
 }
+
 
 function SelectSheet({
   destination, selected, onSelect, onConfirm,
@@ -570,45 +612,48 @@ function SelectSheet({
         })}
       </div>
 
-      <div className="mt-3 -mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex gap-2.5 pb-1">
-          {filtered.map((r) => {
-            const active = r.id === activeRide.id;
-            const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
-            const imgSrc = r.id === "moto-nx" ? motoVermelhaAsset.url : r.type === "moto" ? motoAsset.url : sPressoAsset.url;
-            return (
-              <button
-                key={r.id}
-                onClick={() => onSelect(r)}
-                className="flex shrink-0 flex-col overflow-hidden rounded-2xl p-2 text-left transition"
-                style={{
-                  width: 140,
-                  height: 158,
-                  border: active ? "2px solid #000" : "2px solid transparent",
-                  background: active ? "#EEEEEE" : "#ffffff",
-                  boxShadow: "0 1px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.03)",
-                }}
-              >
-                <div
-                  className="flex items-center justify-center overflow-hidden rounded-2xl"
-                  style={{ background: "#F5F5F5", height: "68%" }}
+      {type === "car" && (
+        <div className="mt-3 -mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2.5 pb-1">
+            {filtered.map((r) => {
+              const active = r.id === activeRide.id;
+              const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
+              const imgSrc = r.id === "moto-nx" ? motoVermelhaAsset.url : r.type === "moto" ? motoAsset.url : sPressoAsset.url;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => onSelect(r)}
+                  className="flex shrink-0 flex-col overflow-hidden rounded-2xl p-2 text-left transition"
+                  style={{
+                    width: 140,
+                    height: 158,
+                    border: active ? "2px solid #000" : "2px solid transparent",
+                    background: active ? "#EEEEEE" : "#ffffff",
+                    boxShadow: "0 1px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.03)",
+                  }}
                 >
-                  <img
-                    src={imgSrc}
-                    alt={r.name}
-                    className="h-full w-full object-contain p-1"
-                    style={{ mixBlendMode: "multiply" }}
-                  />
-                </div>
-                <div className="mt-1.5 px-1 text-center">
-                  <div className="text-[13px] font-bold leading-tight text-[#1a1a1a]">{r.name}</div>
-                  <div className="text-[12px] tabular-nums text-black">{fmtKz(rowPricing.finalPrice)} · {r.eta}</div>
-                </div>
-              </button>
-            );
-          })}
+                  <div
+                    className="flex items-center justify-center overflow-hidden rounded-2xl"
+                    style={{ background: "#F5F5F5", height: "68%" }}
+                  >
+                    <img
+                      src={imgSrc}
+                      alt={r.name}
+                      className="h-full w-full object-contain p-1"
+                      style={{ mixBlendMode: "multiply" }}
+                    />
+                  </div>
+                  <div className="mt-1.5 px-1 text-center">
+                    <div className="text-[13px] font-bold leading-tight text-[#1a1a1a]">{r.name}</div>
+                    <div className="text-[12px] tabular-nums text-black">{fmtKz(rowPricing.finalPrice)} · {r.eta}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
 
 
 
@@ -762,36 +807,72 @@ function SurgePanel({ basePrice, keyHint }: { basePrice: number; keyHint: string
 }
 
 function PaymentRow() {
-  const { method, cycle } = usePaymentMethod();
-  const iconFor = (k: string) => {
-    if (k === "card") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>;
-    if (k === "cash") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>;
-    return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 21V5a2 2 0 0 1 2-2h5a4 4 0 0 1 0 8H7"/></svg>;
-  };
+  const { method, setMethod } = usePaymentMethod();
+  const [open, setOpen] = useState(false);
   return (
-    <div className="mt-3 flex items-center justify-between gap-3 overflow-hidden rounded-2xl bg-secondary px-4 py-3">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={method.id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="flex min-w-0 items-center gap-2"
+    <div className="mt-3 overflow-hidden rounded-2xl bg-secondary">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={method.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="flex min-w-0 items-center gap-3"
+          >
+            <img src={method.logo} alt="" className="h-10 w-10 rounded-lg object-cover ring-1 ring-border" />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{method.label}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{method.hint}</div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="shrink-0 rounded-full bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border"
         >
-          {iconFor(method.icon)}
-          <span className="truncate text-sm font-medium">{method.label}</span>
-        </motion.div>
+          Trocar
+        </button>
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.ul
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="border-t border-border"
+          >
+            {PAYMENT_METHODS.map((m) => {
+              const active = m.id === method.id;
+              return (
+                <li key={m.id}>
+                  <button
+                    onClick={() => { setMethod(m.id); setOpen(false); }}
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${active ? "bg-background" : "hover:bg-background/60"}`}
+                  >
+                    <img src={m.logo} alt="" className="h-10 w-10 rounded-lg object-cover ring-1 ring-border" />
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate text-sm font-medium">{m.label}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">{m.hint}</div>
+                    </div>
+                    {active && (
+                      <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-background">
+                        Ativo
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </motion.ul>
+        )}
       </AnimatePresence>
-      <button
-        onClick={cycle}
-        className="shrink-0 rounded-full bg-background px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground ring-1 ring-border"
-      >
-        Trocar
-      </button>
     </div>
   );
 }
+
 
 
 function MatchingSheet({ ride, agreedPrice, onCancel, onChat }: { ride: Ride; agreedPrice: number | null; onCancel: () => void; onChat: () => void }) {
