@@ -100,13 +100,14 @@ function RideApp() {
           </Sheet>
         )}
         {stage === "search" && (
-          <Sheet key="search" peek onDismiss={() => setStage("home")}>
+          <SnapSheet key="search" snap={snap} onSnapChange={setSnap} onClose={() => setStage("home")}>
             <SearchSheet
-              onPick={(s) => { setDestination(s); setStage("select"); }}
-              onClose={() => setStage("home")}
+              onConfirm={(s) => { setDestination(s); setStage("select"); }}
+              onShowMap={() => setSnap("collapsed")}
             />
-          </Sheet>
+          </SnapSheet>
         )}
+
       </AnimatePresence>
 
       {usesSnap && stage === "select" && destination && (
