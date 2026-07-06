@@ -570,45 +570,48 @@ function SelectSheet({
         })}
       </div>
 
-      <div className="mt-3 -mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex gap-2.5 pb-1">
-          {filtered.map((r) => {
-            const active = r.id === activeRide.id;
-            const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
-            const imgSrc = r.id === "moto-nx" ? motoVermelhaAsset.url : r.type === "moto" ? motoAsset.url : sPressoAsset.url;
-            return (
-              <button
-                key={r.id}
-                onClick={() => onSelect(r)}
-                className="flex shrink-0 flex-col overflow-hidden rounded-2xl p-2 text-left transition"
-                style={{
-                  width: 140,
-                  height: 158,
-                  border: active ? "2px solid #000" : "2px solid transparent",
-                  background: active ? "#EEEEEE" : "#ffffff",
-                  boxShadow: "0 1px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.03)",
-                }}
-              >
-                <div
-                  className="flex items-center justify-center overflow-hidden rounded-2xl"
-                  style={{ background: "#F5F5F5", height: "68%" }}
+      {type === "car" && (
+        <div className="mt-3 -mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2.5 pb-1">
+            {filtered.map((r) => {
+              const active = r.id === activeRide.id;
+              const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
+              const imgSrc = r.id === "moto-nx" ? motoVermelhaAsset.url : r.type === "moto" ? motoAsset.url : sPressoAsset.url;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => onSelect(r)}
+                  className="flex shrink-0 flex-col overflow-hidden rounded-2xl p-2 text-left transition"
+                  style={{
+                    width: 140,
+                    height: 158,
+                    border: active ? "2px solid #2563EB" : "2px solid transparent",
+                    background: active ? "#EEF2FF" : "#ffffff",
+                    boxShadow: "0 1px 6px rgba(37,99,235,0.08), 0 1px 2px rgba(0,0,0,0.03)",
+                  }}
                 >
-                  <img
-                    src={imgSrc}
-                    alt={r.name}
-                    className="h-full w-full object-contain p-1"
-                    style={{ mixBlendMode: "multiply" }}
-                  />
-                </div>
-                <div className="mt-1.5 px-1 text-center">
-                  <div className="text-[13px] font-bold leading-tight text-[#1a1a1a]">{r.name}</div>
-                  <div className="text-[12px] tabular-nums text-black">{fmtKz(rowPricing.finalPrice)} · {r.eta}</div>
-                </div>
-              </button>
-            );
-          })}
+                  <div
+                    className="flex items-center justify-center overflow-hidden rounded-2xl"
+                    style={{ background: "#F4F6FA", height: "68%" }}
+                  >
+                    <img
+                      src={imgSrc}
+                      alt={r.name}
+                      className="h-full w-full object-contain p-1"
+                      style={{ mixBlendMode: "multiply" }}
+                    />
+                  </div>
+                  <div className="mt-1.5 px-1 text-center">
+                    <div className="text-[13px] font-bold leading-tight text-foreground">{r.name}</div>
+                    <div className="text-[12px] tabular-nums text-foreground">{fmtKz(rowPricing.finalPrice)} · {r.eta}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
 
 
 
