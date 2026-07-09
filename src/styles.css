@@ -37,7 +37,7 @@
 /* Default: clean white & gray with soft shadows */
 :root {
   --radius: 0.875rem;
-  --background: #f0f0f0;
+  --background: #ffffff;
   --foreground: #1a1a1a;
   --card: #ffffff;
   --card-foreground: #1a1a1a;
@@ -91,10 +91,9 @@
 
 
 @layer base {
-  * { border-color: var(--color-border); }
-  html, body { height: 100%; }
+  * { border-color: var(--color-border); -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background-color: #ffffff; }
   body {
-    background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
