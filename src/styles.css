@@ -37,7 +37,7 @@
 /* Default: clean white & gray with soft shadows */
 :root {
   --radius: 0.875rem;
-  --background: #f0f0f0;
+  --background: #ffffff;
   --foreground: #1a1a1a;
   --card: #ffffff;
   --card-foreground: #1a1a1a;
