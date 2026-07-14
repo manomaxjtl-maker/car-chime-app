@@ -657,7 +657,11 @@ function SelectSheet({
             {filtered.map((r) => {
               const active = r.id === activeRide.id;
               const rowPricing = computeRowPricing(r.priceKz, destination.title + ":" + r.id);
-              const imgSrc = r.id === "moto-nx" ? motoVermelhaAsset.url : r.type === "moto" ? motoAsset.url : sPressoAsset.url;
+              const imgSrc =
+                r.id === "moto-nx-black" ? hondaNxBlackAsset.url :
+                r.id === "moto-pro" ? hondaNxRedAsset.url :
+                r.id === "moto-nx" ? motoVermelhaAsset.url :
+                r.type === "moto" ? motoAsset.url : sPressoAsset.url;
               return (
                 <button
                   key={r.id}
