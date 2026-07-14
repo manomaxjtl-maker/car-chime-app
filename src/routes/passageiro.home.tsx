@@ -711,8 +711,15 @@ function SelectSheet({
               onClick={() => onSelect(r)}
               className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${active ? "border-foreground bg-secondary" : "border-transparent hover:bg-secondary/60"}`}
             >
-              <div className="flex h-12 w-14 items-center justify-center rounded-xl bg-background ring-1 ring-border">
-                {r.type === "car" ? (
+              <div className="flex h-12 w-14 items-center justify-center overflow-hidden rounded-xl bg-background ring-1 ring-border">
+                {r.id === "moto-pro" || r.id === "moto-nx" || r.id === "moto-nx-black" ? (
+                  <img
+                    src={r.id === "moto-nx-black" ? hondaNxBlackAsset.url : r.id === "moto-pro" ? hondaNxRedAsset.url : motoVermelhaAsset.url}
+                    alt={r.name}
+                    className="h-full w-full object-contain p-0.5"
+                    style={{ mixBlendMode: "multiply" }}
+                  />
+                ) : r.type === "car" ? (
                   <svg width="30" height="18" viewBox="0 0 48 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 20h40l-3-9a3 3 0 0 0-3-2H10a3 3 0 0 0-3 2L4 20Z"/><circle cx="13" cy="22" r="3"/><circle cx="35" cy="22" r="3"/>
                   </svg>
