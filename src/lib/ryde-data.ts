@@ -35,10 +35,8 @@ export const SUGGESTIONS: Suggestion[] = [
 ];
 
 export const RIDES: Ride[] = [
-  { id: "x",        name: "RydeX",   tag: "Económico",            eta: "3 min", priceKz: 1800, capacity: "4", type: "car" },
-  { id: "comfort",  name: "Comfort", tag: "Mais espaço",          eta: "5 min", priceKz: 2700, capacity: "4", type: "car" },
-  { id: "black",    name: "Black",   tag: "Premium",              eta: "7 min", priceKz: 4200, capacity: "4", type: "car" },
-  { id: "xl",       name: "XL",      tag: "Até 6 pessoas",        eta: "9 min", priceKz: 5100, capacity: "6", type: "car" },
+  { id: "x",        name: "Económico", tag: "Melhor preço",         eta: "3 min", priceKz: 1800, capacity: "4", type: "car" },
+  { id: "comfort",  name: "Comfort",   tag: "Mais espaço · S-Presso", eta: "5 min", priceKz: 2700, capacity: "4", type: "car" },
   { id: "moto",     name: "Moto",       tag: "Mais rápido",         eta: "2 min", priceKz:  900, capacity: "1", type: "moto" },
   { id: "moto-125", name: "Moto 125cc", tag: "Clássica",            eta: "3 min", priceKz: 1100, capacity: "1", type: "moto" },
   { id: "moto-pro", name: "Moto Pro",   tag: "Motociclistas 4,9+",  eta: "4 min", priceKz: 1350, capacity: "1", type: "moto" },
