@@ -39,8 +39,9 @@ export const RIDES: Ride[] = [
   { id: "comfort",  name: "Comfort",   tag: "Mais espaço · S-Presso", eta: "5 min", priceKz: 2700, capacity: "4", type: "car" },
   { id: "moto",     name: "Moto",       tag: "Mais rápido",         eta: "2 min", priceKz:  900, capacity: "1", type: "moto" },
   { id: "moto-125", name: "Moto 125cc", tag: "Clássica",            eta: "3 min", priceKz: 1100, capacity: "1", type: "moto" },
-  { id: "moto-pro", name: "Moto Pro",   tag: "Motociclistas 4,9+",  eta: "4 min", priceKz: 1350, capacity: "1", type: "moto" },
+  { id: "moto-pro", name: "Moto Pro",   tag: "Honda NX · Motociclistas 4,9+",  eta: "4 min", priceKz: 1350, capacity: "1", type: "moto" },
   { id: "moto-nx",  name: "Honda NX 500", tag: "Adventure",          eta: "4 min", priceKz: 1600, capacity: "1", type: "moto" },
+  { id: "moto-nx-black", name: "Honda NX Executivo", tag: "Premium · Honda NX preta", eta: "5 min", priceKz: 1850, capacity: "1", type: "moto" },
 ];
 
 export const DRIVERS: Record<VehicleType, Driver> = {
