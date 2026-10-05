@@ -708,15 +708,15 @@ function SelectSheet({
           return (
             <button
               key={r.id}
-              onClick={() => onSelect(r)}
+              onClick={() => { setDiscount(0); onSelect(r); }}
               className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${active ? "border-foreground bg-secondary" : "border-transparent hover:bg-secondary/60"}`}
             >
               <div className="flex h-12 w-14 items-center justify-center overflow-hidden rounded-xl bg-background ring-1 ring-border">
-                {r.id === "moto-pro" || r.id === "moto-nx" || r.id === "moto-nx-black" ? (
+                {r.type === "moto" ? (
                   <img
-                    src={r.id === "moto-nx-black" ? hondaNxBlackAsset.url : r.id === "moto-pro" ? hondaNxRedAsset.url : motoVermelhaAsset.url}
+                    src={r.id === "moto-nx-black" ? hondaNxBlackAsset.url : r.id === "moto-pro" ? hondaNxRedAsset.url : r.id === "moto-nx" ? motoVermelhaAsset.url : motoAsset.url}
                     alt={r.name}
-                    className="h-full w-full object-contain p-0.5"
+                    className="h-full w-full object-contain object-center p-1"
                     style={{ mixBlendMode: "multiply" }}
                   />
                 ) : r.type === "car" ? (
@@ -730,10 +730,17 @@ function SelectSheet({
                 )}
               </div>
               <div className="flex-1">
-                <div className="flex items-center gap-2 text-[14px] font-semibold">{r.name}
+                <div className="flex items-center gap-1.5 text-[14px] font-semibold">{r.name}
+                  {r.color && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium">
+                      <span className="h-2 w-2 rounded-full" style={{ background: r.color === "Vermelha" ? "#DC2626" : "#111" }} />
+                      {r.color}
+                    </span>
+                  )}
                   <span className="text-[11px] font-normal text-muted-foreground">· {r.capacity} lug.</span>
                 </div>
                 <div className="text-[11px] text-muted-foreground">Chega em {r.eta} · {r.tag}</div>
+                {r.desc && <div className="text-[11px] font-medium text-foreground/70">{r.desc}</div>}
               </div>
               <div className="text-right">
                 {rowPricing.surgePct > 0 ? (
@@ -750,6 +757,20 @@ function SelectSheet({
           );
         })}
       </div>
+
+      {(() => {
+        const seed = [...destination.title].reduce((a, c) => a + c.charCodeAt(0), 0);
+        const km = 4 + (seed % 120) / 10;
+        return (
+          <div key={activeRide.id} className="mt-3 flex items-center justify-between rounded-2xl bg-secondary px-3 py-2.5 animate-in fade-in duration-200">
+            <div>
+              <div className="text-[13px] font-semibold">{activeRide.name}{activeRide.color ? ` · ${activeRide.color}` : ""}</div>
+              <div className="text-[11px] text-muted-foreground">{km.toFixed(1)} km · {fmtKz(Math.round(basePrice / km))}/km · chega em {activeRide.eta}</div>
+            </div>
+            <div className="text-[15px] font-bold tabular-nums">{fmtKz(basePrice)}</div>
+          </div>
+        );
+      })()}
 
       <SurgePanel basePrice={activeRide.priceKz} keyHint={destination.title + ":" + activeRide.id} />
 
