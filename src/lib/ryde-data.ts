@@ -10,6 +10,8 @@ export type Ride = {
   priceKz: number;
   capacity: string;
   type: VehicleType;
+  color?: "Vermelha" | "Preta";
+  desc?: string;
 };
 
 export type Driver = {
@@ -37,11 +39,11 @@ export const SUGGESTIONS: Suggestion[] = [
 export const RIDES: Ride[] = [
   { id: "x",        name: "Económico", tag: "Melhor preço",         eta: "3 min", priceKz: 1800, capacity: "4", type: "car" },
   { id: "comfort",  name: "Comfort",   tag: "Mais espaço · S-Presso", eta: "5 min", priceKz: 2700, capacity: "4", type: "car" },
-  { id: "moto",     name: "Moto",       tag: "Mais rápido",         eta: "2 min", priceKz:  900, capacity: "1", type: "moto" },
-  { id: "moto-125", name: "Moto 125cc", tag: "Clássica",            eta: "3 min", priceKz: 1100, capacity: "1", type: "moto" },
-  { id: "moto-pro", name: "Moto Pro",   tag: "Honda NX · Motociclistas 4,9+",  eta: "4 min", priceKz: 1350, capacity: "1", type: "moto" },
-  { id: "moto-nx",  name: "Honda NX 500", tag: "Adventure",          eta: "4 min", priceKz: 1600, capacity: "1", type: "moto" },
-  { id: "moto-nx-black", name: "Honda NX Executivo", tag: "Premium · Honda NX preta", eta: "5 min", priceKz: 1850, capacity: "1", type: "moto" },
+  { id: "moto",     name: "Moto",       tag: "Mais rápido",         eta: "2 min", priceKz:  900, capacity: "1", type: "moto", desc: "Rápida no trânsito" },
+  { id: "moto-125", name: "Moto 125cc", tag: "Clássica",            eta: "3 min", priceKz: 1100, capacity: "1", type: "moto", desc: "Consumo económico" },
+  { id: "moto-pro", name: "Moto Pro",   tag: "Honda NX · Motociclistas 4,9+",  eta: "4 min", priceKz: 1350, capacity: "1", type: "moto", color: "Vermelha", desc: "Conforto do assento" },
+  { id: "moto-nx",  name: "Honda NX 500", tag: "Adventure",          eta: "4 min", priceKz: 1600, capacity: "1", type: "moto", desc: "Ideal para estradas" },
+  { id: "moto-nx-black", name: "Honda NX Executivo", tag: "Premium · Honda NX preta", eta: "5 min", priceKz: 1850, capacity: "1", type: "moto", color: "Preta", desc: "Premium e silenciosa" },
 ];
 
 export const DRIVERS: Record<VehicleType, Driver> = {
